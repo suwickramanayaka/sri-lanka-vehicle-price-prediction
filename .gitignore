@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+.streamlit/secrets.toml
+
+.env
+.env.*
+!.env.example
+ActivityAndAssignmentGuideline1.pdf

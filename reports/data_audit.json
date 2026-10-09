@@ -1,0 +1,48 @@
+{
+  "raw_rows": 9788,
+  "clean_rows": 9770,
+  "invalid_rows": 0,
+  "duplicates_removed": 18,
+  "missing_raw": {
+    "Unnamed: 0": 0,
+    "Brand": 0,
+    "Model": 0,
+    "YOM": 0,
+    "Engine (cc)": 0,
+    "Gear": 0,
+    "Fuel Type": 0,
+    "Millage(KM)": 0,
+    "Town": 0,
+    "Date": 0,
+    "Leasing": 0,
+    "Condition": 0,
+    "AIR CONDITION": 0,
+    "POWER STEERING": 0,
+    "POWER MIRROR": 0,
+    "POWER WINDOW": 0,
+    "Price": 0
+  },
+  "mileage_formula_match_fraction": 1.0,
+  "date_min": "2024-12-03",
+  "date_max": "2025-02-05",
+  "price_unit": "LKR lakhs (user-confirmed)",
+  "train_rows": 5285,
+  "test_rows": 4073,
+  "demo_rows": 1,
+  "test_cutoff": "2025-01-24",
+  "purged_train_rows": 411,
+  "cv_fold_sizes": [
+    {
+      "train": 966,
+      "validation": 1378
+    },
+    {
+      "train": 2319,
+      "validation": 1288
+    },
+    {
+      "train": 3561,
+      "validation": 1617
+    }
+  ]
+}

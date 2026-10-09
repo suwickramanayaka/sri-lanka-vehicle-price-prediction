@@ -1,0 +1,20 @@
+{
+  "input": {
+    "year": 2020,
+    "engine_cc": 1000.0,
+    "brand": "ZOTYE",
+    "model": "Z100",
+    "gear": "MANUAL",
+    "fuel": "PETROL",
+    "town": "PANADURA",
+    "leasing": "NO LEASING",
+    "condition": "USED",
+    "air_condition": "AVAILABLE",
+    "power_steering": "AVAILABLE",
+    "power_mirror": "AVAILABLE",
+    "power_window": "AVAILABLE"
+  },
+  "actual": 30.95,
+  "prediction": 29.962546221129287,
+  "row_id": 9763
+}
