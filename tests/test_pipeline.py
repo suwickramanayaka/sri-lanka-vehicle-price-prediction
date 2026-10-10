@@ -57,7 +57,7 @@ def test_app_prediction_and_demo():
     next(b for b in app.button if b.label=='Estimate listing price').click().run(timeout=30)
     assert not app.exception
 
-@pytest.mark.parametrize('name',['Random Forest','XGBoost'])
+@pytest.mark.parametrize('name',['Random Forest','XGBoost','Stacking'])
 def test_each_saved_model(name,sample):
     model,meta=load_artifacts(name)
     result=predict(sample,model,meta)
@@ -74,7 +74,7 @@ def test_switch_model_clears_and_recalculates():
     app=AppTest.from_file(str(ROOT/'app/app.py')).run(timeout=30)
     next(b for b in app.button if b.label=='Estimate listing price').click().run(timeout=30)
     assert not app.exception
-    assert next(s for s in app.selectbox if s.label=='Prediction model').options == ['Random Forest', 'XGBoost']
+    assert next(s for s in app.selectbox if s.label=='Prediction model').options == ['Random Forest', 'XGBoost', 'Stacking']
     original=next(m.value for m in app.metric if m.label=='Estimated listing price')
     next(s for s in app.selectbox if s.label=='Prediction model').select('XGBoost').run(timeout=30)
     assert not app.exception
@@ -105,7 +105,7 @@ def test_chart_follows_model_selection(monkeypatch):
         return original(path,*args,**kwargs)
     monkeypatch.setattr(pd,'read_csv',track)
     app=AppTest.from_file(str(ROOT/'app/app.py')).run(timeout=30)
-    for name in ['XGBoost','Random Forest']:
+    for name in ['XGBoost','Random Forest','Stacking']:
         reads.clear()
         next(s for s in app.selectbox if s.label=='Prediction model').select(name).run(timeout=30)
         assert not app.exception
@@ -141,3 +141,31 @@ def test_dataset_explorer_is_optional_and_filters():
     assert not app.exception
     raw=[d.value for d in app.dataframe if 'Millage(KM)' in d.value.columns][0]
     assert set(raw.Brand)=={'AUDI'}
+
+
+def test_stacking_temporal_meta_training_and_roundtrip():
+    import pickle
+    from sklearn.tree import DecisionTreeRegressor
+    from src.stacking import TemporalStackingRegressor
+    X = pd.DataFrame({'value': np.arange(48, dtype=float)})
+    dates = pd.Series(pd.date_range('2024-01-01', periods=48))
+    groups = pd.Series([str(i % 35) for i in range(48)])
+    y = X.value.to_numpy() * 2 + 1
+    model = TemporalStackingRegressor([
+        ('a', DecisionTreeRegressor(max_depth=2, random_state=42)),
+        ('b', DecisionTreeRegressor(max_depth=3, random_state=42)),
+    ]).fit(X, y, dates=dates, groups=groups)
+    validation_rows = []
+    for fold in model.fold_audit_:
+        tr, va = fold['train'], fold['validation']
+        assert dates.iloc[tr].max() < dates.iloc[va].min()
+        assert not set(groups.iloc[tr]) & set(groups.iloc[va])
+        validation_rows.extend(va)
+        # Each meta feature must come from a model that never fitted this target row.
+        expected = DecisionTreeRegressor(max_depth=2, random_state=42).fit(X.iloc[tr], y[tr]).predict(X.iloc[va])
+        positions = np.searchsorted(model.meta_rows_, va)
+        np.testing.assert_allclose(model.oof_predictions_[positions, 0], expected)
+    assert list(model.meta_rows_) == sorted(validation_rows)
+    assert 0 not in model.meta_rows_
+    restored = pickle.loads(pickle.dumps(model))
+    np.testing.assert_allclose(restored.predict(X), model.predict(X))

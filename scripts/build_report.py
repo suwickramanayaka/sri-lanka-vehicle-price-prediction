@@ -61,7 +61,7 @@ and every search result are saved in `experiments.csv` and `src/train.py`.
 Random Forest varies tree depth and minimum leaf size while using 180 trees and
 80% feature sampling. XGBoost varies depth and number of boosting rounds, with a
 0.05 learning rate, 85% row/column sampling and explicit L1/L2 regularization.
-Only the two models required for the activity are trained and compared.
+A temporal stacking ensemble additionally combines fixed RF and XGBoost pipelines using scaled Ridge regression (alpha=10). Inner purged temporal folds generate meta-training predictions; outer purged temporal folds evaluate the complete stack. The existing test set had already been inspected before adding stacking, so this extension is exploratory.
 
 ## Results
 All MAE/RMSE values below are in LKR lakhs (multiply by 100,000 for LKR).
@@ -136,7 +136,7 @@ Review the analysis and write the student's own interpretation; extend the liter
 review if required. Confirm Moodle deadlines. Publish the repository and submit its
 link or notebook individually. This project has not been published or submitted.
 '''
-report += "\n\n## Interactive model selection\nThe app saves and loads both trained pipelines separately. Select a model in\nthe Prediction model dropdown, then submit the same vehicle details to compare\nestimates. Random Forest remains the recommended default based on validation MAE.\nSwitching clears the previous result and displays the selected model's test MAE.\nDownloaded predictions include the model name. The importance chart switches to the selected model's global permutation importance.\n"
+report += "\n\n## Interactive model selection\nThe app saves and loads all three trained estimators separately. Select a model in\nthe Prediction model dropdown, then submit the same vehicle details to compare\nestimates. The recommended default is selected by validation MAE.\nSwitching clears the previous result and displays the selected model's test MAE.\nDownloaded predictions include the model name. The importance chart switches to the selected model's global permutation importance.\n"
 interpretation = ROOT/'reports/results_interpretation.md'
 if interpretation.exists():
     report += '\n\n' + interpretation.read_text()
@@ -148,7 +148,7 @@ nb.cells=[
  nbf.v4.new_code_cell("from pathlib import Path\nimport sys, json\nROOT = Path.cwd() if (Path.cwd() / 'src').exists() else Path.cwd().parent\nsys.path.insert(0, str(ROOT))\nimport pandas as pd\nfrom IPython.display import display, Image, Markdown\nfrom src.data import load_data, split_data, FEATURES\ndf, audit = load_data()\ndisplay(pd.Series(audit))\ndisplay(df.head())"),
  nbf.v4.new_markdown_cell('## Source audit\nThe publisher preprocessed the data. All mileage values follow an exact year-based formula and are excluded. The project owner confirmed the source prices are in LKR lakhs. No source nulls does not prove complete original observations.'),
  nbf.v4.new_code_cell("train, test, demo, cutoff, purged = split_data(df)\nprint('Training:', len(train), 'Test:', len(test), 'Demo:', len(demo), 'Test starts:', cutoff)\ndisplay(train[FEATURES + ['price']].describe(include='all'))\ndisplay(train.groupby('brand').agg(count=('price','size'), median_price=('price','median')).sort_values('count', ascending=False).head(15))"),
- nbf.v4.new_markdown_cell('## Train and compare\nThe pipeline fits preprocessing within three purged temporal validation folds. Only explicitly configured Random Forest and XGBoost models are evaluated. Select by validation MAE, not test results. Set RETRAIN=True to repeat training; otherwise use saved results.'),
+ nbf.v4.new_markdown_cell('## Train and compare\nThe pipeline fits preprocessing within three purged temporal validation folds. Random Forest, XGBoost and nested temporal stacking are evaluated. Select by validation MAE, not test results. Set RETRAIN=True to repeat training; otherwise use saved results.'),
  nbf.v4.new_code_cell("RETRAIN = False\nif RETRAIN or not (ROOT / 'models/model.pkl').exists():\n    from src.train import main\n    main()\ncomparison = pd.read_csv(ROOT / 'reports/model_comparison.csv')\ndisplay(comparison)\ndisplay(pd.read_csv(ROOT / 'reports/experiments.csv'))"),
  nbf.v4.new_code_cell("display(Image(filename=str(ROOT / 'reports/figures/evaluation.png')))\ndisplay(Image(filename=str(ROOT / 'reports/figures/importance.png')))\ndisplay(pd.read_csv(ROOT / 'reports/errors_by_brand.csv').head(15))"),
  nbf.v4.new_markdown_cell('## Reload and predict a single unseen record\nThe demo record and all its feature-signature matches were excluded from development.'),

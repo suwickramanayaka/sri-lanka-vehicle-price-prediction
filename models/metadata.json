@@ -2510,6 +2510,16 @@
         "r2": 0.8960698493804182
       },
       "demo_prediction": 32.076656341552734
+    },
+    "Stacking": {
+      "file": "stacking.pkl",
+      "importance_file": "feature_importance_stacking.csv",
+      "test_metrics": {
+        "mae": 6.474806189485893,
+        "rmse": 14.410682085944988,
+        "r2": 0.8935775901924667
+      },
+      "demo_prediction": 33.507657330283195
     }
   }
 }

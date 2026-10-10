@@ -132,14 +132,17 @@ st.subheader('03 / Model analysis')
 performance,comparison_tab,dataset_tab=st.tabs(['Performance & interpretation','Compare models & data','Dataset explorer'])
 with performance:
     row = scores.set_index('model').loc[selected_model]
+    st.caption(('RECOMMENDED' if selected_model == registry['winner'] else 'ALTERNATIVE') + ' · Recommendation uses validation MAE.')
     if selected_model == 'Random Forest':
-        st.caption('RECOMMENDED · Lowest validation MAE and average test error.')
-        strengths = ['Lowest validation and test MAE in this comparison.', 'Captures complex relationships between vehicle details.', 'Combines many trees to reduce reliance on a single tree.']
+        strengths = ['Averages many trees to reduce prediction variance.', 'Captures complex relationships between vehicle details.', 'Combines many trees to reduce reliance on a single tree.']
         limitations = ['Training error is much lower than test error: possible overfitting or market differences.', 'Rare and expensive cars can have large errors.', 'Does not reliably predict beyond the training price range.']
-    else:
-        st.caption('ALTERNATIVE · Slightly better RMSE and R²; higher average test error.')
-        strengths = ['Slightly lower test RMSE and higher R² here.', 'Successive trees learn to correct earlier errors.', 'Regularization helps control model complexity.']
+    elif selected_model == 'XGBoost':
+        strengths = ['Captures nonlinear patterns and interactions.', 'Successive trees learn to correct earlier errors.', 'Regularization helps control model complexity.']
         limitations = ['Higher validation and test MAE than Random Forest here.', 'Performance depends on careful parameter tuning.', 'Rare cars and changes in the market can still cause large errors.']
+    else:
+        strengths = ['Combines Random Forest and XGBoost predictions using Ridge regression.', 'Meta-model learns from predictions on later, unseen training folds.', 'Regularization controls the combination of correlated predictions.']
+        limitations = ['More expensive to train and run than one model.', 'Similar base-model errors can limit the benefit of combining them.', 'Not guaranteed to beat either base model; early training rows cannot train the meta-model.']
+        st.caption('Vehicle details → Random Forest + XGBoost → Ridge meta-model → final estimate. Base models use fixed configurations; standalone models are tuned separately.')
     mae_card, rmse_card, r2_card = st.columns(3)
     with mae_card:
         st.metric('Average error · MAE', f'{row.test_mae:.2f} lakhs')
@@ -200,8 +203,8 @@ with performance:
             st.markdown(interpretation_path.read_text())
 with comparison_tab:
     scores=pd.read_csv(ROOT/'reports/model_comparison.csv')
-    st.markdown('#### Random Forest vs XGBoost')
-    st.caption('Same evaluation splits · Teal: Random Forest · Amber: XGBoost · Bars start at zero')
+    st.markdown('#### Random Forest vs XGBoost vs Stacking')
+    st.caption('Same evaluation splits · Teal: Random Forest · Amber: XGBoost · Purple: Stacking · Bars start at zero')
     metric_specs=[('cv_mae','Validation MAE','Lower is better · Model selection','lakhs',False),
                   ('test_mae','Test MAE','Lower is better · Average error','lakhs',False),
                   ('test_rmse','Test RMSE','Lower is better · Larger errors weigh more','lakhs',False),
@@ -217,15 +220,15 @@ with comparison_tab:
                     top=values.loc[values.score.idxmax() if higher else values.score.idxmin()]
                     domain=[0,1] if higher else [0,float(values.score.max())*1.22]
                     base=alt.Chart(values).encode(
-                        y=alt.Y('model:N',title=None,sort=['Random Forest','XGBoost']),
+                        y=alt.Y('model:N',title=None,sort=['Random Forest','XGBoost','Stacking']),
                         x=alt.X('score:Q',title=unit,scale=alt.Scale(domain=domain)),
                         tooltip=['model:N',alt.Tooltip('score:Q',title=title,format='.3f')])
                     bars=base.mark_bar(cornerRadiusEnd=4,size=28).encode(
-                        color=alt.Color('model:N',scale=alt.Scale(domain=['Random Forest','XGBoost'],range=['#38b2bd','#e8aa62']),legend=None))
+                        color=alt.Color('model:N',scale=alt.Scale(domain=['Random Forest','XGBoost','Stacking'],range=['#38b2bd','#e8aa62','#a78bfa']),legend=None))
                     labels_chart=base.mark_text(align='left',dx=6).encode(text=alt.Text('score:Q',format='.3f'))
-                    st.altair_chart((bars+labels_chart).properties(height=125).configure_view(strokeOpacity=0),use_container_width=True)
+                    st.altair_chart((bars+labels_chart).properties(height=175).configure_view(strokeOpacity=0),use_container_width=True)
                     st.caption('Best on this metric: '+top['model'])
-    st.info('Random Forest has lower validation and test MAE. XGBoost has slightly better test RMSE and R². The small differences do not establish statistical superiority; Random Forest remains the default based on validation MAE.')
+    st.info(f"{registry['winner']} is recommended by validation MAE. Compare test MAE for average errors and RMSE for larger mistakes. Small differences do not establish statistical superiority. Stacking is an added experiment on the existing test split, not a new untouched confirmation set.")
     st.markdown('#### Detailed scores')
     currency_scores = scores[['model','cv_mae','test_mae','test_rmse','test_r2']].copy()
     currency_scores = currency_scores.rename(columns={'cv_mae':'Validation MAE (lakhs)','test_mae':'Test MAE (lakhs)','test_rmse':'Test RMSE (lakhs)','test_r2':'Test R²'})

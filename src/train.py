@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from src.stacking import TemporalStackingRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
@@ -56,6 +57,26 @@ def main():
         rows.append({'model':name,'cv_mae':-float(search.best_score_),'cv_std':float(search.cv_results_['std_test_score'][search.best_index_]),'training_seconds':time.perf_counter()-start,'parameters':json.dumps(search.best_params_)})
         for i,p in enumerate(search.cv_results_['params']):
             experiments.append({'model':name,'parameters':json.dumps(p),'cv_mae':-float(search.cv_results_['mean_test_score'][i]),'cv_std':float(search.cv_results_['std_test_score'][i])})
+    # Fixed base configurations avoid using outer validation labels to tune the stack.
+    stack_bases = [(name, pipeline(model)) for name, (model, _) in specs.items()]
+    print('Training Stacking (nested temporal folds)', flush=True)
+    start = time.perf_counter()
+    stack_scores = []
+    for tr, va in folds:
+        part = train.iloc[tr]
+        stack = TemporalStackingRegressor(stack_bases).fit(
+            part[FEATURES], part.price, dates=part.date, groups=part.group)
+        stack_scores.append(mean_absolute_error(train.price.iloc[va], stack.predict(train[FEATURES].iloc[va])))
+    fitted['Stacking'] = TemporalStackingRegressor(stack_bases).fit(
+        train[FEATURES], train.price, dates=train.date, groups=train.group)
+    stack_parameters = {'meta_model': 'StandardScaler + Ridge', 'alpha': 10.0,
+                        'base_parameters': {name: model.get_params() for name, (model, _) in specs.items()},
+                        'validation': '3 outer purged temporal folds; 3 inner folds for meta-training'}
+    stack_row = {'model': 'Stacking', 'cv_mae': float(np.mean(stack_scores)),
+                 'cv_std': float(np.std(stack_scores)), 'training_seconds': time.perf_counter()-start,
+                 'parameters': json.dumps(stack_parameters)}
+    rows.append(stack_row)
+    experiments.append({k: stack_row[k] for k in ['model','parameters','cv_mae','cv_std']})
     # Freeze winner by validation MAE before computing any held-out test results.
     winner=min(rows,key=lambda r:r['cv_mae'])['model']; best=fitted[winner]
     print('Validation-selected winner:',winner,flush=True)
@@ -94,7 +115,7 @@ def main():
         'ranges':{c:[float(train[c].min()),float(train[c].max())] for c in NUMERIC},
         'versions':{p:version(p) for p in ['scikit-learn','xgboost','pandas','numpy','streamlit']},
         'python':platform.python_version(),'raw_sha256':hashlib.sha256((ROOT/'data/raw/car_price_dataset.csv').read_bytes()).hexdigest(),
-        'test_metrics':metrics(test.price,pred),'selected_parameters':best.named_steps['model'].get_params()}
+        'test_metrics':metrics(test.price,pred),'selected_parameters':(stack_parameters if winner == 'Stacking' else best.named_steps['model'].get_params())}
     metadata['models'] = {}
     for name, estimator in fitted.items():
         filename = name.lower().replace(' ', '_') + '.pkl'
