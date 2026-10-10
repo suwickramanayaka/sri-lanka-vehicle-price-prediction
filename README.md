@@ -3,6 +3,32 @@
 A reproducible tabular regression coursework project comparing Random Forest and XGBoost for the class activity. Includes temporal validation,
 model export, an unseen example, an analysis notebook and a Streamlit interface.
 
+## Live application
+
+[Open the Vehicle Listing Price Explorer](https://sri-lanka-vehicle-price-prediction.streamlit.app/)
+
+Hosted on Streamlit Community Cloud. The app is private: sign in with an account
+that has been granted access. Repository access and app access are managed separately.
+
+## Interface preview
+
+Screenshots below show the local application interface using the saved models.
+
+### Price estimation
+
+Enter vehicle details, choose Random Forest or XGBoost, and estimate the listing
+price in LKR. The selected model's error metrics and feature importance appear
+alongside the result.
+
+![Vehicle details, an estimated listing price in LKR, and Random Forest feature importance](docs/screenshots/price-estimation.png)
+
+### Model comparison
+
+Compare both models on the same evaluation splits. Random Forest has lower
+validation and test MAE; XGBoost has slightly better test RMSE and R².
+
+![Random Forest and XGBoost comparison charts for validation MAE, test MAE, RMSE and R-squared, with detailed scores](docs/screenshots/model-comparison.png)
+
 ## Start the application
 
 From this project directory:
@@ -97,8 +123,8 @@ without choosing the winner from test performance. Do not retune on these scores
 
 Soft voting is a classification technique; this regression project compares
 regressors. Stacking is optional and not implemented. A hosted URL is not required
-by the supplied guideline. GitHub publication and Moodle submission remain the
-student's submission steps. Review the report and be prepared to explain every
+by the supplied guideline; the private hosted app is linked above. Moodle submission remains the
+student's submission step. Review the report and be prepared to explain every
 model, preprocessing choice and limitation in your own words.
 
 
