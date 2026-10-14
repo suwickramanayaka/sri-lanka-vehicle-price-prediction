@@ -1,0 +1,13 @@
+model,category,count,mae_lakhs
+Random Forest,Seen model label,3484,4.829983670750491
+Random Forest,Unseen model label,589,11.74792924965789
+XGBoost,Seen model label,3484,5.993032596059823
+XGBoost,Unseen model label,589,11.721380878580348
+CatBoost,Seen model label,3484,7.66406208429324
+CatBoost,Unseen model label,589,12.850599434526952
+LightGBM,Seen model label,3484,6.760240130560218
+LightGBM,Unseen model label,589,12.496517283733722
+Ridge,Seen model label,3484,8.379421495181118
+Ridge,Unseen model label,589,19.54233162905647
+Stacking,Seen model label,3484,5.622210502358438
+Stacking,Unseen model label,589,11.518003768351852

@@ -1,0 +1,25 @@
+{
+  "training_rows": 5285,
+  "price_skew": 3.7979347437547095,
+  "price_median": 42.5,
+  "price_p95": 120.0,
+  "price_max": 790.0,
+  "numeric_spearman": {
+    "year": {
+      "year": 1.0,
+      "engine_cc": -0.4555624184427699,
+      "price": 0.6523327449390949
+    },
+    "engine_cc": {
+      "year": -0.4555624184427699,
+      "engine_cc": 1.0,
+      "price": 0.06936896645623195
+    },
+    "price": {
+      "year": 0.6523327449390949,
+      "engine_cc": 0.06936896645623195,
+      "price": 1.0
+    }
+  },
+  "scope": "Training partition only; no test labels used for candidate selection."
+}

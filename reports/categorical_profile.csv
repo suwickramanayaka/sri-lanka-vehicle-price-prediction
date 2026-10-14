@@ -1,0 +1,12 @@
+feature,unique_values,categories_under_3_rows,rows_in_rare_categories
+brand,48,14,18
+model,1061,758,893
+gear,2,0,0
+fuel,4,0,0
+town,106,6,6
+leasing,2,0,0
+condition,2,0,0
+air_condition,2,0,0
+power_steering,2,0,0
+power_mirror,2,0,0
+power_window,2,0,0

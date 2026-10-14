@@ -19,9 +19,17 @@ Use a restrained teal palette, clear labels and a two-column layout.
 
 
 ## Model switching
-Both fitted pipelines are saved separately and registered in `models/metadata.json`.
+All six fitted estimators are saved separately and registered in `models/metadata.json`.
 Use the **Prediction model** dropdown, then click **Estimate listing price**.
 Random Forest remains the validation-recommended default. Switching clears the previous
 estimate and updates the selected model’s test MAE. Downloaded results include the
 model name. The feature importance chart updates to the selected model’s own permutation importance. CLI example:
 `python -m src.predict --model XGBoost`.
+
+
+## Part 2 interface
+Support CatBoost, LightGBM and Ridge alongside RF, XGBoost and Stacking.
+Read the model registry dynamically and keep chart colors consistent across all models.
+Show training-only EDA and selection justification inside an optional comparison
+expander, along with fold scores and price-band errors. Label the reused test split
+as exploratory. Do not automatically submit coursework or change app privacy.

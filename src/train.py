@@ -9,7 +9,11 @@ import matplotlib.pyplot as plt
 from src.stacking import TemporalStackingRegressor
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import Ridge
+from src.preprocessing import NativeCatBoostRegressor
+from lightgbm import LGBMRegressor
+from src.preprocessing import NativeCategories
 from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
@@ -21,7 +25,11 @@ from src.data import ROOT, FEATURES, NUMERIC, CATEGORICAL, load_data, split_data
 SEED=42
 
 def pipeline(model):
+    if isinstance(model, NativeCatBoostRegressor):
+        return Pipeline([('preprocess', NativeCategories()), ('model', model)])
     num=[('impute',SimpleImputer(strategy='median'))]
+    if isinstance(model, Ridge):
+        num.append(('scale', StandardScaler()))
     pre=ColumnTransformer([('numeric',Pipeline(num),NUMERIC),('category',Pipeline([
         ('impute',SimpleImputer(strategy='most_frequent')),
         ('encode',OneHotEncoder(handle_unknown='ignore',min_frequency=3,sparse_output=True))]),CATEGORICAL)])
@@ -48,17 +56,34 @@ def main():
       'XGBoost':(XGBRegressor(n_estimators=300,max_depth=5,learning_rate=0.05,subsample=0.85,colsample_bytree=0.85,min_child_weight=3,reg_lambda=5,reg_alpha=0.1,objective='reg:squarederror',tree_method='hist',n_jobs=2,random_state=SEED),
           [{'model__max_depth':[3],'model__n_estimators':[250]}, {'model__max_depth':[5],'model__n_estimators':[350]}, {'model__max_depth':[7],'model__n_estimators':[250]}]),
     }
-    fitted={}; rows=[]; experiments=[]
+    specs.update({
+      'CatBoost': (NativeCatBoostRegressor(iterations=350, depth=6, learning_rate=.05,
+          l2_leaf_reg=5,
+          random_seed=SEED, thread_count=2),
+          [{'model__depth':[4], 'model__l2_leaf_reg':[5]},
+           {'model__depth':[6], 'model__l2_leaf_reg':[8]},
+           {'model__depth':[8], 'model__l2_leaf_reg':[10]}]),
+      'LightGBM': (LGBMRegressor(n_estimators=350, learning_rate=.05, num_leaves=15,
+          max_depth=6, min_child_samples=20, subsample=.85, subsample_freq=1,
+          colsample_bytree=.85, reg_lambda=5, random_state=SEED, n_jobs=2, verbosity=-1),
+          [{'model__num_leaves':[15], 'model__min_child_samples':[20]},
+           {'model__num_leaves':[31], 'model__min_child_samples':[30]},
+           {'model__num_leaves':[31], 'model__min_child_samples':[50]}]),
+      'Ridge': (Ridge(solver='lsqr', max_iter=5000), [{'model__alpha':[1,10,100]}]),
+    })
+    fitted={}; rows=[]; experiments=[]; fold_scores=[]
     for name,(model,grid) in specs.items():
         print('Training',name,flush=True); start=time.perf_counter()
         search=GridSearchCV(pipeline(model),grid,scoring='neg_mean_absolute_error',cv=folds,n_jobs=1,refit=True,error_score='raise')
         search.fit(train[FEATURES],train.price)
         fitted[name]=search.best_estimator_
+        for fold in range(len(folds)):
+            fold_scores.append({'model':name,'fold':fold+1,'mae':-float(search.cv_results_[f'split{fold}_test_score'][search.best_index_])})
         rows.append({'model':name,'cv_mae':-float(search.best_score_),'cv_std':float(search.cv_results_['std_test_score'][search.best_index_]),'training_seconds':time.perf_counter()-start,'parameters':json.dumps(search.best_params_)})
         for i,p in enumerate(search.cv_results_['params']):
             experiments.append({'model':name,'parameters':json.dumps(p),'cv_mae':-float(search.cv_results_['mean_test_score'][i]),'cv_std':float(search.cv_results_['std_test_score'][i])})
     # Fixed base configurations avoid using outer validation labels to tune the stack.
-    stack_bases = [(name, pipeline(model)) for name, (model, _) in specs.items()]
+    stack_bases = [(name, pipeline(model)) for name, (model, _) in specs.items() if name in ['Random Forest','XGBoost']]
     print('Training Stacking (nested temporal folds)', flush=True)
     start = time.perf_counter()
     stack_scores = []
@@ -70,12 +95,14 @@ def main():
     fitted['Stacking'] = TemporalStackingRegressor(stack_bases).fit(
         train[FEATURES], train.price, dates=train.date, groups=train.group)
     stack_parameters = {'meta_model': 'StandardScaler + Ridge', 'alpha': 10.0,
-                        'base_parameters': {name: model.get_params() for name, (model, _) in specs.items()},
+                        'base_parameters': {name: model.get_params() for name, (model, _) in specs.items() if name in ['Random Forest','XGBoost']},
                         'validation': '3 outer purged temporal folds; 3 inner folds for meta-training'}
     stack_row = {'model': 'Stacking', 'cv_mae': float(np.mean(stack_scores)),
                  'cv_std': float(np.std(stack_scores)), 'training_seconds': time.perf_counter()-start,
                  'parameters': json.dumps(stack_parameters)}
     rows.append(stack_row)
+    fold_scores.extend({'model':'Stacking','fold':i+1,'mae':float(v)} for i,v in enumerate(stack_scores))
+    pd.DataFrame(fold_scores).to_csv(ROOT/'reports/validation_folds.csv',index=False)
     experiments.append({k: stack_row[k] for k in ['model','parameters','cv_mae','cv_std']})
     # Freeze winner by validation MAE before computing any held-out test results.
     winner=min(rows,key=lambda r:r['cv_mae'])['model']; best=fitted[winner]
@@ -85,6 +112,12 @@ def main():
         r.update({'test_'+k:v for k,v in metrics(test.price,pred).items()})
         r['prediction_ms_per_row']=(time.perf_counter()-start)*1000/len(test)
         r['train_mae']=float(mean_absolute_error(train.price,m.predict(train[FEATURES])))
+    baseline_scores=[]
+    for tr,va in folds:
+        baseline_scores.append(mean_absolute_error(train.price.iloc[va],np.full(len(va),train.price.iloc[tr].median())))
+    baseline = {'model':'Training median','cv_mae':float(np.mean(baseline_scores)),
+                **{'test_'+k:v for k,v in metrics(test.price,np.full(len(test),train.price.median())).items()}}
+    (ROOT/'reports/baseline.json').write_text(json.dumps(baseline,indent=2))
     comparison=pd.DataFrame(rows).sort_values('cv_mae');comparison.to_csv(ROOT/'reports/model_comparison.csv',index=False)
     pd.DataFrame(experiments).to_csv(ROOT/'reports/experiments.csv',index=False)
     pred=best.predict(test[FEATURES]); errors=test[['row_id','brand','model','year','date','price']].copy()
@@ -113,7 +146,7 @@ def main():
         'categories':{c:sorted(train[c].dropna().unique().tolist()) for c in CATEGORICAL},
         'brand_models':{b:sorted(p.model.unique().tolist()) for b,p in train.groupby('brand')},
         'ranges':{c:[float(train[c].min()),float(train[c].max())] for c in NUMERIC},
-        'versions':{p:version(p) for p in ['scikit-learn','xgboost','pandas','numpy','streamlit']},
+        'versions':{p:version(p) for p in ['scikit-learn','xgboost','catboost','lightgbm','pandas','numpy','streamlit']},
         'python':platform.python_version(),'raw_sha256':hashlib.sha256((ROOT/'data/raw/car_price_dataset.csv').read_bytes()).hexdigest(),
         'test_metrics':metrics(test.price,pred),'selected_parameters':(stack_parameters if winner == 'Stacking' else best.named_steps['model'].get_params())}
     metadata['models'] = {}

@@ -57,7 +57,7 @@ def test_app_prediction_and_demo():
     next(b for b in app.button if b.label=='Estimate listing price').click().run(timeout=30)
     assert not app.exception
 
-@pytest.mark.parametrize('name',['Random Forest','XGBoost','Stacking'])
+@pytest.mark.parametrize('name',['Random Forest','XGBoost','CatBoost','LightGBM','Ridge','Stacking'])
 def test_each_saved_model(name,sample):
     model,meta=load_artifacts(name)
     result=predict(sample,model,meta)
@@ -74,7 +74,7 @@ def test_switch_model_clears_and_recalculates():
     app=AppTest.from_file(str(ROOT/'app/app.py')).run(timeout=30)
     next(b for b in app.button if b.label=='Estimate listing price').click().run(timeout=30)
     assert not app.exception
-    assert next(s for s in app.selectbox if s.label=='Prediction model').options == ['Random Forest', 'XGBoost', 'Stacking']
+    assert next(s for s in app.selectbox if s.label=='Prediction model').options == ['Random Forest', 'XGBoost', 'CatBoost', 'LightGBM', 'Ridge', 'Stacking']
     original=next(m.value for m in app.metric if m.label=='Estimated listing price')
     next(s for s in app.selectbox if s.label=='Prediction model').select('XGBoost').run(timeout=30)
     assert not app.exception
@@ -105,7 +105,7 @@ def test_chart_follows_model_selection(monkeypatch):
         return original(path,*args,**kwargs)
     monkeypatch.setattr(pd,'read_csv',track)
     app=AppTest.from_file(str(ROOT/'app/app.py')).run(timeout=30)
-    for name in ['XGBoost','Random Forest','Stacking']:
+    for name in ['XGBoost','Random Forest','CatBoost','LightGBM','Ridge','Stacking']:
         reads.clear()
         next(s for s in app.selectbox if s.label=='Prediction model').select(name).run(timeout=30)
         assert not app.exception
@@ -169,3 +169,42 @@ def test_stacking_temporal_meta_training_and_roundtrip():
     assert 0 not in model.meta_rows_
     restored = pickle.loads(pickle.dumps(model))
     np.testing.assert_allclose(restored.predict(X), model.predict(X))
+
+
+def test_native_preprocessing_uses_training_statistics():
+    from sklearn.base import clone
+    from src.preprocessing import NativeCategories, NativeCatBoostRegressor
+    train=load_data()[0].head(12)[FEATURES].copy()
+    transform=NativeCategories().fit(train)
+    unseen=train.iloc[:1].copy()
+    unseen['engine_cc']=np.nan
+    unseen['town']='NEW TOWN'
+    result=transform.transform(unseen)
+    assert result.engine_cc.iloc[0]==train.engine_cc.median()
+    assert result.town.iloc[0]=='NEW TOWN'
+    assert list(result.columns)==FEATURES
+    assert clone(NativeCatBoostRegressor()).get_params()==NativeCatBoostRegressor().get_params()
+
+
+@pytest.mark.parametrize('name',['CatBoost','LightGBM','Ridge'])
+def test_part2_model_handles_unseen_categories(name,sample):
+    sample['town']='UNSEEN TOWN'
+    result=predict(sample,*load_artifacts(name))
+    assert np.isfinite(result['prediction'])
+    assert result['model']==name
+    assert any('Unseen town' in w for w in result['warnings'])
+
+
+def test_part2_selection_and_error_evidence():
+    comparison=pd.read_csv(ROOT/'reports/model_comparison.csv')
+    meta=json.loads((ROOT/'models/metadata.json').read_text())
+    assert meta['winner']==comparison.loc[comparison.cv_mae.idxmin(),'model']
+    folds=pd.read_csv(ROOT/'reports/validation_folds.csv')
+    assert set(folds.model)==set(meta['models'])
+    for name in meta['models']:
+        actual=folds.loc[folds.model==name,'mae']
+        assert len(actual)==3
+        assert actual.mean()==pytest.approx(comparison.set_index('model').loc[name,'cv_mae'])
+    bands=pd.read_csv(ROOT/'reports/errors_by_price_band.csv')
+    test=split_data(load_data()[0])[1]
+    assert (bands.groupby('model')['count'].sum()==len(test)).all()

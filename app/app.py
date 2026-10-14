@@ -133,16 +133,10 @@ performance,comparison_tab,dataset_tab=st.tabs(['Performance & interpretation','
 with performance:
     row = scores.set_index('model').loc[selected_model]
     st.caption(('RECOMMENDED' if selected_model == registry['winner'] else 'ALTERNATIVE') + ' · Recommendation uses validation MAE.')
-    if selected_model == 'Random Forest':
-        strengths = ['Averages many trees to reduce prediction variance.', 'Captures complex relationships between vehicle details.', 'Combines many trees to reduce reliance on a single tree.']
-        limitations = ['Training error is much lower than test error: possible overfitting or market differences.', 'Rare and expensive cars can have large errors.', 'Does not reliably predict beyond the training price range.']
-    elif selected_model == 'XGBoost':
-        strengths = ['Captures nonlinear patterns and interactions.', 'Successive trees learn to correct earlier errors.', 'Regularization helps control model complexity.']
-        limitations = ['Higher validation and test MAE than Random Forest here.', 'Performance depends on careful parameter tuning.', 'Rare cars and changes in the market can still cause large errors.']
-    else:
-        strengths = ['Combines Random Forest and XGBoost predictions using Ridge regression.', 'Meta-model learns from predictions on later, unseen training folds.', 'Regularization controls the combination of correlated predictions.']
-        limitations = ['More expensive to train and run than one model.', 'Similar base-model errors can limit the benefit of combining them.', 'Not guaranteed to beat either base model; early training rows cannot train the meta-model.']
-        st.caption('Vehicle details → Random Forest + XGBoost → Ridge meta-model → final estimate. Base models use fixed configurations; standalone models are tuned separately.')
+    from src.model_notes import MODEL_NOTES
+    strengths, limitations = MODEL_NOTES[selected_model]
+    if selected_model == 'Stacking':
+        st.caption('Vehicle details → Random Forest + XGBoost → Ridge → final estimate. The base configurations are fixed separately from standalone tuning.')
     mae_card, rmse_card, r2_card = st.columns(3)
     with mae_card:
         st.metric('Average error · MAE', f'{row.test_mae:.2f} lakhs')
@@ -162,7 +156,7 @@ with performance:
         with st.container(border=True):
             st.markdown('#### Limitations')
             st.markdown('\n'.join('- '+item for item in limitations))
-    st.caption(f'Training MAE: {row.train_mae:.2f} lakhs · Validation MAE: {row.cv_mae:.2f} lakhs · Test MAE: {row.test_mae:.2f} lakhs. The default model was chosen using validation results, before testing.')
+    st.caption(f'Training MAE: {row.train_mae:.2f} lakhs · Validation MAE: {row.cv_mae:.2f} lakhs · Test MAE: {row.test_mae:.2f} lakhs. Selection uses validation; the existing test split is exploratory.')
     slug=selected_model.lower().replace(' ','_')
     interpretation_path=ROOT/f'reports/interpretation_{slug}.md'
     diagnostics_path=ROOT/f'reports/diagnostics_{slug}.csv'
@@ -171,6 +165,7 @@ with performance:
     if diagnostics_path.exists():
         diagnostics=pd.read_csv(diagnostics_path)
         max_price=float(diagnostics[['actual','predicted']].max().max())
+        min_price=min(0.0,float(diagnostics[['actual','predicted']].min().min()))
         points=alt.Chart(diagnostics).mark_circle(size=28,opacity=.45,color='#38b2bd').encode(
             tooltip=[alt.Tooltip('actual:Q',title='Actual (lakhs)',format='.2f'),
                      alt.Tooltip('predicted:Q',title='Predicted (lakhs)',format='.2f'),
@@ -180,7 +175,7 @@ with performance:
             with st.container(border=True):
                 st.markdown('**Actual vs predicted**')
                 st.caption('Closer to the dashed line means a better prediction.')
-                scatter=points.encode(x=alt.X('actual:Q',title='Actual price (lakhs)',scale=alt.Scale(domain=[0,max_price])),y=alt.Y('predicted:Q',title='Predicted price (lakhs)',scale=alt.Scale(domain=[0,max_price])))
+                scatter=points.encode(x=alt.X('actual:Q',title='Actual price (lakhs)',scale=alt.Scale(domain=[min_price,max_price])),y=alt.Y('predicted:Q',title='Predicted price (lakhs)',scale=alt.Scale(domain=[min_price,max_price])))
                 reference=alt.Chart(pd.DataFrame({'actual':[0,max_price],'predicted':[0,max_price]})).mark_line(color='#e8aa62',strokeDash=[5,5]).encode(x='actual:Q',y='predicted:Q')
                 st.altair_chart((scatter+reference).properties(height=320).configure_view(strokeOpacity=0),use_container_width=True)
                 st.caption('BELOW LINE · Underestimated   /   ABOVE LINE · Overestimated')
@@ -203,8 +198,8 @@ with performance:
             st.markdown(interpretation_path.read_text())
 with comparison_tab:
     scores=pd.read_csv(ROOT/'reports/model_comparison.csv')
-    st.markdown('#### Random Forest vs XGBoost vs Stacking')
-    st.caption('Same evaluation splits · Teal: Random Forest · Amber: XGBoost · Purple: Stacking · Bars start at zero')
+    st.markdown('#### Model comparison')
+    st.caption('Same temporal splits · Models ordered by validation MAE · Lower MAE is the selection criterion')
     metric_specs=[('cv_mae','Validation MAE','Lower is better · Model selection','lakhs',False),
                   ('test_mae','Test MAE','Lower is better · Average error','lakhs',False),
                   ('test_rmse','Test RMSE','Lower is better · Larger errors weigh more','lakhs',False),
@@ -218,17 +213,17 @@ with comparison_tab:
                     st.caption(guide)
                     values=scores[['model',key]].rename(columns={key:'score'})
                     top=values.loc[values.score.idxmax() if higher else values.score.idxmin()]
-                    domain=[0,1] if higher else [0,float(values.score.max())*1.22]
+                    domain=[min(0,float(values.score.min())),max(1,float(values.score.max()))] if higher else [0,float(values.score.max())*1.22]
                     base=alt.Chart(values).encode(
-                        y=alt.Y('model:N',title=None,sort=['Random Forest','XGBoost','Stacking']),
+                        y=alt.Y('model:N',title=None,sort=scores.model.tolist()),
                         x=alt.X('score:Q',title=unit,scale=alt.Scale(domain=domain)),
                         tooltip=['model:N',alt.Tooltip('score:Q',title=title,format='.3f')])
                     bars=base.mark_bar(cornerRadiusEnd=4,size=28).encode(
-                        color=alt.Color('model:N',scale=alt.Scale(domain=['Random Forest','XGBoost','Stacking'],range=['#38b2bd','#e8aa62','#a78bfa']),legend=None))
-                    labels_chart=base.mark_text(align='left',dx=6).encode(text=alt.Text('score:Q',format='.3f'))
-                    st.altair_chart((bars+labels_chart).properties(height=175).configure_view(strokeOpacity=0),use_container_width=True)
+                        color=alt.Color('model:N',scale=alt.Scale(domain=choices,range=['#38b2bd','#e8aa62','#68b984','#ed829b','#8aa5ec','#a78bfa']),legend=None))
+                    labels_chart=base.mark_text(align='left',dx=6,color='#cbd5e1').encode(text=alt.Text('score:Q',format='.3f'))
+                    st.altair_chart((bars+labels_chart).properties(height=max(175,40*len(scores))).configure_view(strokeOpacity=0),use_container_width=True)
                     st.caption('Best on this metric: '+top['model'])
-    st.info(f"{registry['winner']} is recommended by validation MAE. Compare test MAE for average errors and RMSE for larger mistakes. Small differences do not establish statistical superiority. Stacking is an added experiment on the existing test split, not a new untouched confirmation set.")
+    st.info(f"{registry['winner']} is recommended by validation MAE. Compare test MAE for average errors and RMSE for larger mistakes. Small differences do not establish statistical superiority. Part 2 extends an already examined test split; results are exploratory, not a new untouched confirmation test.")
     st.markdown('#### Detailed scores')
     currency_scores = scores[['model','cv_mae','test_mae','test_rmse','test_r2']].copy()
     currency_scores = currency_scores.rename(columns={'cv_mae':'Validation MAE (lakhs)','test_mae':'Test MAE (lakhs)','test_rmse':'Test RMSE (lakhs)','test_r2':'Test R²'})
@@ -237,6 +232,15 @@ with comparison_tab:
     st.write('The model was selected by time-ordered validation MAE. Test listings are later than training listings, with matching feature signatures excluded across splits. Without original listing IDs, repeated vehicles cannot be identified perfectly.')
     st.write('The dataset was already preprocessed by its publisher. The lakh scale was confirmed by the project owner; original missing-value treatments cannot be independently reconstructed. Rare models, extreme prices and market changes may produce larger errors.')
     st.markdown('[Dataset: Prasad Nirmal, Kaggle](https://www.kaggle.com/datasets/prasadnirmal/srilankan-second-vehiclecar-price-dataset) · Publisher metadata lists MIT licensing.')
+
+    with st.expander('Part 2 · Why these models and what the data shows'):
+        st.markdown((ROOT/'reports/part2_summary.md').read_text())
+        st.image(str(ROOT/'reports/figures/training_eda.png'))
+        st.caption('Training-only exploration used to choose model families.')
+        st.markdown('**Validation stability** · Fold scores are descriptive, not confidence intervals.')
+        st.dataframe(pd.read_csv(ROOT/'reports/validation_folds.csv'),hide_index=True)
+        st.markdown('**Error by price band** · Bands use actual prices, for retrospective evaluation only.')
+        st.dataframe(pd.read_csv(ROOT/'reports/errors_by_price_band.csv'),hide_index=True)
 
 with dataset_tab:
     from src.dataset_explorer import render_dataset_explorer

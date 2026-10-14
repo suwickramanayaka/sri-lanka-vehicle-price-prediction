@@ -2459,6 +2459,8 @@
   "versions": {
     "scikit-learn": "1.9.1",
     "xgboost": "3.4.1",
+    "catboost": "1.2.10",
+    "lightgbm": "4.7.0",
     "pandas": "3.0.6",
     "numpy": "2.5.3",
     "streamlit": "1.65.0"
@@ -2510,6 +2512,36 @@
         "r2": 0.8960698493804182
       },
       "demo_prediction": 32.076656341552734
+    },
+    "CatBoost": {
+      "file": "catboost.pkl",
+      "importance_file": "feature_importance_catboost.csv",
+      "test_metrics": {
+        "mae": 8.414091669190775,
+        "rmse": 15.60616128868343,
+        "r2": 0.8751880420326061
+      },
+      "demo_prediction": 31.866303508535122
+    },
+    "LightGBM": {
+      "file": "lightgbm.pkl",
+      "importance_file": "feature_importance_lightgbm.csv",
+      "test_metrics": {
+        "mae": 7.589768056712733,
+        "rmse": 15.282744909165194,
+        "r2": 0.880307553912142
+      },
+      "demo_prediction": 28.213395104954753
+    },
+    "Ridge": {
+      "file": "ridge.pkl",
+      "importance_file": "feature_importance_ridge.csv",
+      "test_metrics": {
+        "mae": 9.993699439903088,
+        "rmse": 20.69440413342703,
+        "r2": 0.7805326770520828
+      },
+      "demo_prediction": 29.0413630593156
     },
     "Stacking": {
       "file": "stacking.pkl",

@@ -1,6 +1,7 @@
 # Sri Lankan Vehicle Listing Price Explorer
 
-A reproducible tabular regression coursework project comparing Random Forest, XGBoost and temporal stacking for the class activity. Includes temporal validation,
+A reproducible Part 2 tabular regression project extending the Part 1 class activity.
+Compares Random Forest, XGBoost, CatBoost, LightGBM, Ridge and temporal stacking. Includes temporal validation,
 model export, an unseen example, an analysis notebook and a Streamlit interface.
 
 ## Live application
@@ -16,7 +17,7 @@ Screenshots below show the local application interface using the saved models.
 
 ### Price estimation
 
-Enter vehicle details, choose Random Forest, XGBoost or Stacking, and estimate the listing
+Enter vehicle details, choose a trained model, and estimate the listing
 price in LKR. The selected model's error metrics and feature importance appear
 alongside the result.
 
@@ -57,7 +58,9 @@ Re-train the pickle after changing dependency versions.
 ## Reproduce the analysis
 
 ```bash
+python scripts/analyze_data.py
 python -m src.train
+python scripts/part2_results.py
 python scripts/interpret_results.py
 python scripts/build_report.py
 python -m src.predict
@@ -129,7 +132,7 @@ model, preprocessing choice and limitation in your own words.
 
 
 ## Model switching
-All three fitted estimators are saved separately and registered in `models/metadata.json`.
+All six fitted estimators are saved separately and registered in `models/metadata.json`.
 Use the **Prediction model** dropdown, then click **Estimate listing price**.
 The default is selected by validation MAE. Switching clears the previous
 estimate and updates the selected model’s test MAE. Downloaded results include the
@@ -168,3 +171,22 @@ Stacking may improve results but is not guaranteed to do so.
 Run `python -m src.predict --model Stacking` or select **Stacking** in the app.
 The comparison table, feature importance and diagnostic charts include it.
 The interface screenshots above show the earlier two-model interface.
+
+
+## Part 2 deliverables
+
+- [Experiment plan](docs/part2_experiment_plan.md): training-only findings, candidate rationale and fixed evaluation rules.
+- [Final report](reports/final_report.md): analysis, comparison, model-choice justification, sources and limitations.
+- [Executed notebook](notebooks/vehicle_price_analysis.ipynb): reproducible exploration, results and inference.
+- [Related approaches](docs/related_work.md): local vehicle-price study and primary CatBoost/LightGBM sources.
+- [Part 2 checklist](docs/part2_checklist.md): requirement-to-evidence mapping.
+
+CatBoost uses native categories; LightGBM uses one-hot inputs; Ridge supplies a
+regularized linear reference. A training-median benchmark is reported separately
+and is not offered as a prediction model in the app. The optional **Part 2**
+expander in the comparison tab presents training EDA, selection reasoning,
+validation fold scores and error breakdowns without crowding the prediction form.
+
+The expanded comparison reuses an already examined test set, so it is exploratory.
+It does not establish current-market accuracy or superiority over published studies.
+Moodle submission and lecturer access to the private links remain individual steps.

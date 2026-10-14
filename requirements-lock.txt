@@ -3,6 +3,7 @@ anyio==4.15.1
 appnope==1.0.0
 asttokens==3.0.2
 attrs==26.1.0
+catboost==1.2.10
 certifi==2026.7.22
 charset-normalizer==3.5.2
 click==8.5.0
@@ -14,6 +15,7 @@ debugpy==1.8.22
 executing==2.2.1
 fastjsonschema==2.22.2
 fonttools==4.66.1
+graphviz==0.21
 h11==0.16.0
 httptools==0.8.0
 idna==3.20
@@ -30,6 +32,7 @@ jsonschema-specifications==2025.9.1
 jupyter_client==8.10.0
 jupyter_core==5.9.1
 kiwisolver==1.5.1
+lightgbm==4.7.0
 MarkupSafe==3.0.4
 matplotlib==3.11.2
 matplotlib-inline==0.2.2
@@ -44,6 +47,7 @@ parso==0.8.7
 pexpect==4.9.0
 pillow==12.3.0
 platformdirs==4.12.4
+plotly==7.1.0
 pluggy==1.6.0
 prompt_toolkit==3.0.53
 protobuf==7.36.2

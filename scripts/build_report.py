@@ -1,4 +1,4 @@
-"""Create the report and notebook from real saved experiment results."""
+"""Build Part 2 report and reproducible notebook from saved evidence."""
 from pathlib import Path
 import json
 import pandas as pd
@@ -8,153 +8,162 @@ a=json.loads((ROOT/'reports/data_audit.json').read_text())
 m=json.loads((ROOT/'models/metadata.json').read_text())
 d=json.loads((ROOT/'models/demo.json').read_text())
 c=pd.read_csv(ROOT/'reports/model_comparison.csv')
+e=json.loads((ROOT/'reports/eda_summary.json').read_text())
+
 def table(df):
     return '| '+' | '.join(df.columns)+' |\n|'+'|'.join(['---']*len(df.columns))+'|\n'+'\n'.join('| '+' | '.join(f'{v:.3f}' if isinstance(v,float) else str(v) for v in row)+' |' for row in df.itertuples(index=False,name=None))
-scoretable=table(c[['model','cv_mae','cv_std','test_mae','test_rmse','test_r2']])
-report=f'''# Sri Lankan Vehicle Listing Price Prediction
 
-## Objective
-Estimate advertised vehicle prices from tabular listing characteristics and compare
-Random Forest with XGBoost for the class activity. Intended users are students
-and reviewers exploring historical asking-price relationships. This is a coursework
-prototype, not a present-day vehicle valuation service.
+report=f'''# Part 2 — Sri Lankan Vehicle Listing Price Prediction
+
+## Objective and local relevance
+Predict historical advertised vehicle prices from tabular listing characteristics.
+Buyers and sellers can explore how vehicle characteristics relate to asking prices,
+while reviewers can compare models and inspect their limitations. This extends
+Part 1 into a broader model-selection study, as permitted by the guideline.
+It does not estimate verified transaction prices or current 2026 market values.
 
 ## Source and provenance
-Prasad Nirmal, *SriLankan Vehicle(Car) Price Dataset*, Kaggle version 3:
-https://www.kaggle.com/datasets/prasadnirmal/srilankan-second-vehiclecar-price-dataset
+[Prasad Nirmal, SriLankan Vehicle(Car) Price Dataset, version 3](https://www.kaggle.com/datasets/prasadnirmal/srilankan-second-vehiclecar-price-dataset).
+Publisher metadata identifies Ikman.lk and Riyasewana.com as sources and lists MIT
+licensing. Original CSV and metadata are retained in `data/raw`.
+SHA-256: `{m['raw_sha256']}`.
+There are {a['raw_rows']:,} source rows, spanning {a['date_min']} to {a['date_max']}.
+Price is in LKR lakhs, confirmed by the project owner; 1 lakh is LKR 100,000.
 
-Publisher metadata lists MIT licensing and describes listings scraped from Ikman.lk
-and Riyasewana.com. The downloaded source has {a['raw_rows']:,} rows and 17 columns,
-including an exported index. Listings span {a['date_min']} to {a['date_max']}.
-Metadata and the original CSV are preserved. SHA-256: `{m['raw_sha256']}`.
+## Data analysis before model selection
+Exploration in `scripts/analyze_data.py` uses only the training partition.
+The training price median is {e['price_median']:.1f} lakhs, 95th percentile
+{e['price_p95']:.1f}, maximum {e['price_max']:.1f}, and skewness {e['price_skew']:.2f}.
+The long upper tail motivates reporting RMSE and price-band errors alongside MAE.
+Extreme observations remain in evaluation rather than being removed to improve scores.
 
-## Data analysis and limitations
-- {a['duplicates_removed']} exact duplicates were removed after trimming categories and ignoring the exported index.
-- {a['invalid_rows']} records failed target/date/year validity checks.
-- The downloaded table contains no literal nulls, but the publisher already preprocessed it.
-- Every mileage value equals `(2025 - YOM) * 11000`. It is excluded as a deterministic proxy for year, not interpreted as measured mileage.
-- The project owner confirmed that Price is in LKR lakhs. One lakh equals LKR 100,000. Training metrics remain in lakhs; the app converts monetary values to LKR.
-- Model categories are numerous and often rare. Rare-category handling is learned separately within each fold.
-- Listing prices are not verified transaction prices. The original listing IDs and full cleaning history are unavailable.
+{table(pd.read_csv(ROOT/'reports/categorical_profile.csv'))}
 
-## Evaluation design
-The latest record is reserved for a single-sample demonstration; all records with
-its feature signature are excluded from development. The final test period starts
-{a['test_cutoff']}. Matching feature signatures are purged from earlier training data,
-removing {a['purged_train_rows']} potential overlaps. This conservative proxy can also
-exclude distinct cars with identical features; it cannot establish actual identities.
+Many model labels are rare, motivating native categorical handling and regularized
+one-hot alternatives. Year/price Spearman association is
+{e['numeric_spearman']['year']['price']:.2f}; engine capacity/price association is
+{e['numeric_spearman']['engine_cc']['price']:.2f}. These are marginal associations,
+not causal effects or sufficient reasons to remove an interacting feature.
 
-There are {a['train_rows']:,} training records, {a['test_rows']:,} test records and one
-demonstration record. Three expanding temporal folds are used inside training.
-Validation groups are also excluded from each fold's training partition. The chosen
-model minimizes mean validation MAE; test results are computed afterward and are
-not used to select or retune it. Fold standard deviations describe variation over
-three time windows, not confidence intervals.
+![Training-only exploration](figures/training_eda.png)
 
-## Preprocessing and parameter engineering
-Numerical median imputation and categorical most-frequent imputation are fitted
-within the pipeline. One-hot encoding pools categories with fewer than three
-training observations and handles unknown categories. Both selected
-tree models do not require normalization or scaling. Explicit model configurations
-and every search result are saved in `experiments.csv` and `src/train.py`.
+## Cleaning and leakage controls
+{a['duplicates_removed']} exact duplicate rows were removed after category trimming,
+and {a['invalid_rows']} rows failed target/date/year checks. No literal source nulls
+were found, but the publisher already preprocessed the table; missing original
+observations and prior imputation cannot be reconstructed.
+Mileage equals `(2025 - year) * 11000` throughout the source and is excluded.
+The exported index, date, target and group identifiers are not predictors.
 
-Random Forest varies tree depth and minimum leaf size while using 180 trees and
-80% feature sampling. XGBoost varies depth and number of boosting rounds, with a
-0.05 learning rate, 85% row/column sampling and explicit L1/L2 regularization.
-A temporal stacking ensemble additionally combines fixed RF and XGBoost pipelines using scaled Ridge regression (alpha=10). Inner purged temporal folds generate meta-training predictions; outer purged temporal folds evaluate the complete stack. The existing test set had already been inspected before adding stacking, so this extension is exploratory.
+The latest record is reserved for a single-example demo, excluding its feature
+signature from development. Test dates start on {a['test_cutoff']}. Matching feature
+groups are removed from earlier training data ({a['purged_train_rows']} rows).
+There are {a['train_rows']:,} training, {a['test_rows']:,} test and one demo row.
+Feature signatures are a conservative proxy; without original listing IDs they
+cannot establish true vehicle identity. Three expanding temporal folds are used
+for parameter search, with matching validation groups purged from each training fold.
 
-## Results
-All MAE/RMSE values below are in LKR lakhs (multiply by 100,000 for LKR).
+## Candidate selection and preprocessing
+- **Random Forest:** bagging reference for nonlinear interactions and variance reduction.
+- **XGBoost:** regularized sequential boosting retained from Part 1.
+- **CatBoost:** native categorical processing is relevant to rare vehicle model labels.
+- **LightGBM:** an efficient histogram-based boosting alternative with bounded leaf growth.
+- **Ridge:** additive linear comparison to test whether tree complexity adds value.
+- **Stacking:** fixed RF and XGBoost pipelines combined through scaled Ridge regression.
+- **Training median:** no-feature reference benchmark, not a selectable app model.
 
-{scoretable}
+All preprocessing is fitted within folds. RF, XGBoost, LightGBM and Ridge use
+numeric median and categorical mode imputation plus one-hot encoding with rare
+category pooling. Ridge scales numeric inputs; tree models do not require scaling.
+CatBoost receives string categories with a missing marker and fold-fitted numeric
+median imputation. No globally fitted target encoder is used.
 
-The validation-selected model is **{m['winner']}**. Its held-out MAE is
-**{m['test_metrics']['mae']:.3f}**, RMSE **{m['test_metrics']['rmse']:.3f}**, and
-R² **{m['test_metrics']['r2']:.3f}**. R² is not percentage accuracy. A difference in model scores
-is descriptive; this experiment does not prove statistical superiority.
+RF, XGBoost, CatBoost and LightGBM each compare three explicitly constrained
+configurations. Ridge compares alpha 1, 10 and 100. Actual settings and every search
+result are in `experiments.csv`; bounded searches are not exhaustive optimization.
+CatBoost's adapter supplies categorical names during fit for sklearn compatibility.
+LightGBM uses ordinary GBDT with row sampling, not a replication of GOSS.
+Stacking uses inner purged temporal out-of-fold predictions to train its Ridge
+meta-model (alpha 10), then refits bases on the training partition. Outer temporal
+folds evaluate the complete stack. Its bases are fixed, not selected with outer
+validation labels. Earliest rows without out-of-fold predictions do not train Ridge.
 
-![Evaluation plots](figures/evaluation.png)
+## Evaluation and justification
+Mean validation MAE is the selection rule fixed before the expanded run. MAE
+expresses average monetary error directly; RMSE emphasizes large mistakes and R²
+is unitless, not percentage accuracy. Fold standard deviation is descriptive,
+not a confidence interval. Timing includes parameter search and refitting on this
+machine; hardware-specific timings are not published-paper speed comparisons.
 
-XGBoost has a lower test RMSE but a higher test MAE than
-Random Forest: it performs better under the metric that penalizes large errors more
-strongly, while Random Forest has smaller average absolute errors. The chosen metric
-was MAE before evaluation.
+{table(c[['model','cv_mae','cv_std','test_mae','test_rmse','test_r2','training_seconds','prediction_ms_per_row']])}
 
-## Model strengths and limitations
-- **Random Forest:** models nonlinear interactions and offers flexible regularization; can struggle with rare vehicles and cannot reliably extrapolate beyond training prices.
-- **XGBoost:** sequentially corrects errors and supports explicit regularization; sensitive to tuning, outliers and distribution changes.
+{(ROOT/'reports/part2_summary.md').read_text()}
 
-Consult `errors_by_brand.csv` for subgroup counts and MAE. Do not draw strong
-conclusions from brands with only a few test observations. `test_predictions.csv`
-records individual errors. The residual plot helps identify whether expensive cars
-or other regions of the target range have systematically larger errors.
+## Error analysis
+The band table below uses actual target prices for retrospective analysis only;
+those bands are not available when making a new prediction. Counts matter:
+small subgroups cannot establish reliable group-level performance.
 
-## Interpretation
-Manufacture year has the largest permutation importance, followed by brand,
-transmission and engine capacity. This suggests that vehicle age and basic market
-segment characteristics drive much of the fitted model’s discrimination. It does
-not show that changing a feature would cause a corresponding price change.
+{table(pd.read_csv(ROOT/'reports/errors_by_price_band.csv'))}
 
-Permutation importance measures the test MAE increase when a feature is shuffled.
-It is descriptive analysis after evaluation; it was not used for further tuning.
-Correlated features may share importance, and shuffling can create implausible
-combinations. These are global associations, not causal effects or explanations
-of a particular car's price.
+{table(pd.read_csv(ROOT/'reports/errors_by_category_coverage.csv'))}
 
-![Feature importance](figures/importance.png)
+Per-brand counts and MAE for every model are saved in `errors_by_brand_all_models.csv`.
+Permutation importance measures how much test MAE changes when an input is shuffled.
+It explains global reliance, not causation or the reason for a single prediction.
+Correlated inputs can share importance; shuffling may create implausible vehicles.
 
-## Comparison with an existing approach
-Basnayaka (2023), *Prediction of Market Price for Used Cars in Sri Lanka Based on
-Machine Learning Approaches*, IIT repository:
-https://dlib.iit.ac.lk/xmlui/handle/123456789/1634
+## Comparison with existing approaches
+{(ROOT/'docs/related_work.md').read_text()}
 
-The abstract describes comparing linear regression, Random Forest, Extra Trees,
-gradient boosting, LightGBM and XGBoost, plus averaging predictions. This project
-compares a related subset and adds an explicit documented audit of deterministic
-mileage and lakh-based price scaling, temporal evaluation, and feature-signature
-purging. The repository abstract's reported “accuracy” is not a directly comparable
-MAE/R² benchmark, and an identical dataset/split has not been verified. This is a
-methodological comparison, not a claim to outperform that study. A broader literature
-review is still appropriate before the final assignment submission.
+## Single-sample inference and interface
+Reserved source row {d['row_id']}: actual {d['actual']:.3f} lakhs, selected-model
+prediction {d['prediction']:.3f}, absolute error {abs(d['actual']-d['prediction']):.3f}.
+All exported estimators are reloaded and checked against their in-memory prediction.
+The Streamlit interface validates fields, switches models, shows estimates in LKR,
+and presents model-specific importance, diagnostics, comparison and optional data exploration.
 
-## Single-sample inference
-Reserved source row: {d['row_id']}. Actual price (LKR lakhs): {d['actual']:.3f}; prediction:
-{d['prediction']:.3f}; absolute error: {abs(d['actual']-d['prediction']):.3f}.
-The exported pipeline was reloaded and its prediction matched the in-memory model.
-Run `python -m src.predict` to repeat this independently.
+[Private live app](https://sri-lanka-vehicle-price-prediction.streamlit.app/) ·
+[Private repository](https://github.com/suwickramanayaka/sri-lanka-vehicle-price-prediction)
 
-## Front end and reproducibility
-The Streamlit interface accepts the actual model fields, validates inputs, displays
-historical estimates in LKR, supports the held-out example and shows model
-comparisons. Interface requirements are documented in `docs/interface.md`.
-The fitted preprocessing and estimator are exported together in `models/model.pkl`.
-Exact installed versions are saved in `requirements-lock.txt`.
+Reviewer access must be granted separately for private app/repository links.
+The interface specification is in `docs/interface.md`. Reproduction commands are in README.
 
-## Remaining submission work
-The lakh scale is based on the project owner’s confirmation.
-Review the analysis and write the student's own interpretation; extend the literature
-review if required. Confirm Moodle deadlines. Publish the repository and submit its
-link or notebook individually. This project has not been published or submitted.
+## Limitations and next evaluation
+The test set was already examined in Part 1. New models are exploratory additions,
+not independently confirmed improvements. Do not reshuffle familiar rows and call
+them a new unseen set. Collect later listings with verified units, real mileage,
+vehicle IDs and sale prices where possible; freeze the candidate choice, deduplicate
+by vehicle identity, then evaluate the frozen model on that new period.
+Data covers only about two months, is publisher-preprocessed, and may not reflect
+later import policies, exchange rates or supply changes. No causal, fairness,
+statistical-superiority or current-market accuracy claim is made.
+No deep learning, computer vision or reinforcement learning is used.
+
+## Submission status
+Implementation, report and notebook are prepared. Moodle submission is not performed.
+Confirm the lecturer's actual deadline (the guideline says tentatively 18 October),
+provide reviewer access, review and explain the work, and submit individually.
+
+## Model-specific strengths, limitations and results
+{(ROOT/'reports/results_interpretation.md').read_text()}
 '''
-report += "\n\n## Interactive model selection\nThe app saves and loads all three trained estimators separately. Select a model in\nthe Prediction model dropdown, then submit the same vehicle details to compare\nestimates. The recommended default is selected by validation MAE.\nSwitching clears the previous result and displays the selected model's test MAE.\nDownloaded predictions include the model name. The importance chart switches to the selected model's global permutation importance.\n"
-interpretation = ROOT/'reports/results_interpretation.md'
-if interpretation.exists():
-    report += '\n\n' + interpretation.read_text()
-(ROOT/'reports/final_report.md').write_text(report)
+(ROOT/'reports/final_report.md').write_text(report.rstrip()+'\n')
 nb=nbf.v4.new_notebook()
 nb.metadata.kernelspec={'display_name':'Python 3','language':'python','name':'python3'}
 nb.cells=[
- nbf.v4.new_markdown_cell('# Sri Lankan Vehicle Listing Price Prediction\n\nEnd-to-end activity and final-assignment foundation. Training and saved metric values are in LKR lakhs; app predictions are converted to LKR.'),
- nbf.v4.new_code_cell("from pathlib import Path\nimport sys, json\nROOT = Path.cwd() if (Path.cwd() / 'src').exists() else Path.cwd().parent\nsys.path.insert(0, str(ROOT))\nimport pandas as pd\nfrom IPython.display import display, Image, Markdown\nfrom src.data import load_data, split_data, FEATURES\ndf, audit = load_data()\ndisplay(pd.Series(audit))\ndisplay(df.head())"),
- nbf.v4.new_markdown_cell('## Source audit\nThe publisher preprocessed the data. All mileage values follow an exact year-based formula and are excluded. The project owner confirmed the source prices are in LKR lakhs. No source nulls does not prove complete original observations.'),
- nbf.v4.new_code_cell("train, test, demo, cutoff, purged = split_data(df)\nprint('Training:', len(train), 'Test:', len(test), 'Demo:', len(demo), 'Test starts:', cutoff)\ndisplay(train[FEATURES + ['price']].describe(include='all'))\ndisplay(train.groupby('brand').agg(count=('price','size'), median_price=('price','median')).sort_values('count', ascending=False).head(15))"),
- nbf.v4.new_markdown_cell('## Train and compare\nThe pipeline fits preprocessing within three purged temporal validation folds. Random Forest, XGBoost and nested temporal stacking are evaluated. Select by validation MAE, not test results. Set RETRAIN=True to repeat training; otherwise use saved results.'),
- nbf.v4.new_code_cell("RETRAIN = False\nif RETRAIN or not (ROOT / 'models/model.pkl').exists():\n    from src.train import main\n    main()\ncomparison = pd.read_csv(ROOT / 'reports/model_comparison.csv')\ndisplay(comparison)\ndisplay(pd.read_csv(ROOT / 'reports/experiments.csv'))"),
- nbf.v4.new_code_cell("display(Image(filename=str(ROOT / 'reports/figures/evaluation.png')))\ndisplay(Image(filename=str(ROOT / 'reports/figures/importance.png')))\ndisplay(pd.read_csv(ROOT / 'reports/errors_by_brand.csv').head(15))"),
- nbf.v4.new_markdown_cell('## Reload and predict a single unseen record\nThe demo record and all its feature-signature matches were excluded from development.'),
- nbf.v4.new_code_cell("from src.predict import predict\nexample = json.loads((ROOT / 'models/demo.json').read_text())\ndisplay(example['input'])\ndisplay(predict(example['input']))\nprint('Actual price (LKR lakhs):', example['actual'])"),
- nbf.v4.new_markdown_cell('## Interpretation and limitations'),
- nbf.v4.new_code_cell("display(Markdown((ROOT / 'reports/final_report.md').read_text()))"),
- nbf.v4.new_markdown_cell('## Run the interface\nFrom the project root: `streamlit run app/app.py`. See README.md for installation, verification and submission mapping.')]
+ nbf.v4.new_markdown_cell('# Part 2 — Sri Lankan Vehicle Listing Price Prediction\nTraining-only exploration, expanded tabular model comparison, interpretation and inference. Values are in lakhs unless labelled LKR. The existing test split is exploratory.'),
+ nbf.v4.new_code_cell("from pathlib import Path\nimport sys, json\nROOT = Path.cwd() if (Path.cwd() / 'src').exists() else Path.cwd().parent\nsys.path.insert(0, str(ROOT))\nimport pandas as pd\nfrom IPython.display import display, Image, Markdown\nfrom src.data import load_data, split_data, FEATURES\ndf, audit = load_data()\ntrain, test, demo, cutoff, purged = split_data(df)\ndisplay(pd.Series(audit))\ndisplay(train.head())"),
+ nbf.v4.new_markdown_cell('## Training-only exploration and candidate rationale'),
+ nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'reports/numeric_profile.csv'))\ndisplay(pd.read_csv(ROOT/'reports/categorical_profile.csv'))\ndisplay(Image(filename=str(ROOT/'reports/figures/training_eda.png')))\ndisplay(Markdown((ROOT/'docs/part2_experiment_plan.md').read_text()))"),
+ nbf.v4.new_markdown_cell('## Reproduce model fitting\nSet RETRAIN=True to rerun the frozen search. No test-driven tuning.'),
+ nbf.v4.new_code_cell("RETRAIN=False\nif RETRAIN:\n    from scripts.analyze_data import main as analyze\n    from src.train import main as train_models\n    from scripts.part2_results import main as summarize\n    analyze()\n    train_models()\n    summarize()\ndisplay(pd.read_csv(ROOT/'reports/model_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'reports/experiments.csv'))\ndisplay(pd.read_csv(ROOT/'reports/validation_folds.csv'))\ndisplay(pd.Series(json.loads((ROOT/'reports/baseline.json').read_text())))"),
+ nbf.v4.new_markdown_cell('## Justification and subgroup errors'),
+ nbf.v4.new_code_cell("display(Markdown((ROOT/'reports/part2_summary.md').read_text()))\ndisplay(pd.read_csv(ROOT/'reports/errors_by_price_band.csv'))\ndisplay(pd.read_csv(ROOT/'reports/errors_by_category_coverage.csv'))\ndisplay(Markdown((ROOT/'docs/related_work.md').read_text()))"),
+ nbf.v4.new_markdown_cell('## Model-specific diagnostics and interpretations'),
+ nbf.v4.new_code_cell("metadata=json.loads((ROOT/'models/metadata.json').read_text())\nfor name in metadata['models']:\n    slug=name.lower().replace(' ','_')\n    display(Markdown((ROOT/f'reports/interpretation_{slug}.md').read_text()))\n    display(Image(filename=str(ROOT/f'reports/figures/diagnostics_{slug}.png')))"),
+ nbf.v4.new_markdown_cell('## Reload all models and infer the reserved sample'),
+ nbf.v4.new_code_cell("from src.predict import predict, load_artifacts\nexample=json.loads((ROOT/'models/demo.json').read_text())\ndisplay(example['input'])\nfor name in metadata['models']:\n    display(predict(example['input'],*load_artifacts(name)))\nprint('Actual price (lakhs):',example['actual'])"),
+ nbf.v4.new_markdown_cell('## Interface and submission\nRun `streamlit run app/app.py`. See README for the deployed private app, reproduction commands and reviewer access. Moodle submission remains an individual step.')]
 nbf.write(nb,ROOT/'notebooks/vehicle_price_analysis.ipynb')
-print('Report and notebook created')
+print('Part 2 report and notebook created')
