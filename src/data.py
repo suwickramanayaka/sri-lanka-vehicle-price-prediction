@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+# Source mileage is derived from year, so it is intentionally excluded from FEATURES.
 NUMERIC = ['year', 'engine_cc']
 CATEGORICAL = ['brand', 'model', 'gear', 'fuel', 'town', 'leasing', 'condition',
                'air_condition', 'power_steering', 'power_mirror', 'power_window']
@@ -16,6 +17,7 @@ RENAME = {'Brand':'brand','Model':'model','YOM':'year','Engine (cc)':'engine_cc'
 def load_data():
     raw = pd.read_csv(ROOT/'data/raw/car_price_dataset.csv')
     df = raw.rename(columns=RENAME).copy()
+    # Preserve source row identity for audit trails after sorting and filtering.
     df['row_id'] = np.arange(len(df))
     for c in CATEGORICAL:
         df[c] = df[c].astype('string').str.strip().str.upper().replace('', pd.NA)
@@ -39,9 +41,11 @@ def load_data():
     return df, audit
 
 def split_data(df):
+    # Reserve the newest example and exclude its feature group from development.
     demo = df.tail(1).copy()
     pool = df.loc[~df.group.isin(demo.group)].copy()
     dates = sorted(pool.date.unique())
+    # Split by unique dates, not row count, so a day never spans train and test.
     cutoff = dates[int(len(dates)*0.8)]
     test = pool.loc[pool.date >= cutoff].copy()
     candidates = pool.loc[pool.date < cutoff].copy()
@@ -55,6 +59,7 @@ def temporal_folds(train, n_splits=3):
     folds=[]
     for a,b in TimeSeriesSplit(n_splits=n_splits).split(dates):
         va=np.flatnonzero(train.date.isin(dates[b]))
+        # Purge matching signatures to reduce overlap from possible relistings.
         tr=np.flatnonzero(train.date.isin(dates[a]) & ~train.group.isin(train.iloc[va].group))
         folds.append((tr,va))
     return folds

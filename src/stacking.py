@@ -17,6 +17,7 @@ class TemporalStackingRegressor(RegressorMixin, BaseEstimator):
     def fit(self, X, y, *, dates, groups):
         context = pd.DataFrame({'date': np.asarray(dates), 'group': np.asarray(groups)})
         target = np.asarray(y)
+        # Each column holds one base model's predictions for later, unseen fold rows.
         oof = np.full((len(X), len(self.estimators)), np.nan)
         self.fold_audit_ = []
         for tr, va in temporal_folds(context):
@@ -26,11 +27,13 @@ class TemporalStackingRegressor(RegressorMixin, BaseEstimator):
             for j, (_, estimator) in enumerate(self.estimators):
                 fitted = clone(estimator).fit(X.iloc[tr], target[tr])
                 oof[va, j] = fitted.predict(X.iloc[va])
+        # Early rows have no preceding training fold and cannot train the meta-model.
         usable = np.isfinite(oof).all(axis=1)
         self.meta_rows_ = np.flatnonzero(usable)
         self.oof_predictions_ = oof[usable]
         self.meta_model_ = make_pipeline(StandardScaler(), Ridge(alpha=self.alpha))
         self.meta_model_.fit(self.oof_predictions_, target[usable])
+        # Refit bases on all supplied training rows only after fitting Ridge on OOF predictions.
         self.estimators_ = [(name, clone(est).fit(X, target)) for name, est in self.estimators]
         return self
 

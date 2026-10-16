@@ -1,10 +1,9 @@
-# Part 2 experiment plan
+# Experiment plan
 
 Prepared 14 October 2026, before running the expanded candidate comparison.
 
 Problem: predict historical Sri Lankan advertised vehicle prices from tabular fields.
-The source and split are retained from Part 1. This extends that activity as the
-Part 2 guideline permits; it is not a deep-learning or image-processing project.
+The study uses a fixed source dataset and temporal split to compare tabular regression approaches.
 
 Training-only exploration shows 1,061 vehicle model labels, 758 occurring fewer
 than three times, price skewness 3.80 and a median of 42.5 lakhs versus a maximum
@@ -14,7 +13,7 @@ They do not establish causality.
 
 ## Fixed evaluation decisions
 
-- Preserve the Part 1 temporal split and purged feature groups; no random reshuffle.
+- Preserve the established temporal split and purged feature groups; no random reshuffle.
 - Compare Random Forest, XGBoost, CatBoost, LightGBM, Ridge and RF/XGBoost stacking.
 - Include the training-median prediction as a non-deployable reference benchmark.
 - Use three bounded configurations per standalone model. Do not expand the search
@@ -30,7 +29,7 @@ They do not establish causality.
 
 ## Evidence limits
 
-The existing test set was inspected during Part 1 and stacking development.
+The existing test set was inspected during earlier model and stacking development.
 Expanded results are exploratory, even though the new selection uses validation
 only. A truly independent confirmation needs newly collected future listings;
 repartitioning these known rows would not make them unseen again. No claims of

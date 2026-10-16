@@ -34,12 +34,14 @@ h3 {font-size:1.05rem!important;}
 
 if not (ROOT/'models/model.pkl').exists():
     st.info('Train the project first: python -m src.train');st.stop()
+# The registry modification time is part of the cache key, refreshing replaced artifacts.
 @st.cache_resource
 def artifacts(name, revision): return load_artifacts(name)
 registry_path=ROOT/'models/metadata.json'
 registry=json.loads(registry_path.read_text())
 choices=list(registry.get('models',{registry['winner']:{}}))
 def clear_estimate():
+    # Prevent a previous model's estimate from appearing under the new selection.
     st.session_state.pop('result',None)
     st.session_state.pop('result_input',None)
 
@@ -223,7 +225,7 @@ with comparison_tab:
                     labels_chart=base.mark_text(align='left',dx=6,color='#cbd5e1').encode(text=alt.Text('score:Q',format='.3f'))
                     st.altair_chart((bars+labels_chart).properties(height=max(175,40*len(scores))).configure_view(strokeOpacity=0),use_container_width=True)
                     st.caption('Best on this metric: '+top['model'])
-    st.info(f"{registry['winner']} is recommended by validation MAE. Compare test MAE for average errors and RMSE for larger mistakes. Small differences do not establish statistical superiority. Part 2 extends an already examined test split; results are exploratory, not a new untouched confirmation test.")
+    st.info(f"{registry['winner']} is recommended by validation MAE. Compare test MAE for average errors and RMSE for larger mistakes. Small differences do not establish statistical superiority. This comparison uses an already examined test split; results are exploratory, not a new untouched confirmation test.")
     st.markdown('#### Detailed scores')
     currency_scores = scores[['model','cv_mae','test_mae','test_rmse','test_r2']].copy()
     currency_scores = currency_scores.rename(columns={'cv_mae':'Validation MAE (lakhs)','test_mae':'Test MAE (lakhs)','test_rmse':'Test RMSE (lakhs)','test_r2':'Test R²'})
@@ -233,8 +235,8 @@ with comparison_tab:
     st.write('The dataset was already preprocessed by its publisher. The lakh scale was confirmed by the project owner; original missing-value treatments cannot be independently reconstructed. Rare models, extreme prices and market changes may produce larger errors.')
     st.markdown('[Dataset: Prasad Nirmal, Kaggle](https://www.kaggle.com/datasets/prasadnirmal/srilankan-second-vehiclecar-price-dataset) · Publisher metadata lists MIT licensing.')
 
-    with st.expander('Part 2 · Why these models and what the data shows'):
-        st.markdown((ROOT/'reports/part2_summary.md').read_text())
+    with st.expander('Model selection · Evidence and rationale'):
+        st.markdown((ROOT/'reports/model_selection.md').read_text())
         st.image(str(ROOT/'reports/figures/training_eda.png'))
         st.caption('Training-only exploration used to choose model families.')
         st.markdown('**Validation stability** · Fold scores are descriptive, not confidence intervals.')

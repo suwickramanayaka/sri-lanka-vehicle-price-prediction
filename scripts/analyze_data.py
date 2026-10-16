@@ -1,4 +1,4 @@
-"""Training-only exploration used to justify Part 2 model candidates."""
+"""Training-only exploration used to justify model candidates."""
 from pathlib import Path
 import sys, json
 ROOT = Path(__file__).resolve().parents[1]

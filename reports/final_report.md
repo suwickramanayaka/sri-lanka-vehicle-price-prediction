@@ -1,13 +1,48 @@
-# Part 2 — Sri Lankan Vehicle Listing Price Prediction
+# Sri Lankan Vehicle Listing Price Prediction
 
-## Objective and local relevance
+## Technical Report
+
+**Author:** Sithum Wickramanayaka
+
+## Abstract
+This study evaluates six regression approaches for predicting historical advertised
+vehicle prices in Sri Lanka. The dataset contains 9,788 listings collected
+between December 2024 and February 2025. Training-only exploration informs model
+selection, while temporal validation and feature-group purging reduce leakage.
+The comparison includes Random Forest, XGBoost, CatBoost, LightGBM, Ridge and a
+Random Forest–XGBoost stack with a Ridge meta-model. Random Forest achieves the
+lowest validation MAE of 7.15 lakhs and a test MAE of
+5.83 lakhs. A deployed Streamlit application supports
+single-vehicle inference and interactive inspection of the results. Because the
+test set was examined during earlier development, the expanded findings are exploratory
+and require confirmation using newly collected listings.
+
+## Contents
+
+1. Objective and local relevance
+2. Dataset and provenance
+3. Exploratory data analysis
+4. Data preparation and leakage controls
+5. Model selection and preprocessing
+6. Evaluation and model justification
+7. Error analysis
+8. Comparison with existing approaches
+9. Single-sample inference and user interface
+10. Deployment and repository
+11. Limitations and future evaluation
+12. Conclusion
+13. References
+
+Appendix A provides model-specific results and diagnostic figures.
+
+
+## 1. Objective and local relevance
 Predict historical advertised vehicle prices from tabular listing characteristics.
 Buyers and sellers can explore how vehicle characteristics relate to asking prices,
-while reviewers can compare models and inspect their limitations. This extends
-Part 1 into a broader model-selection study, as permitted by the guideline.
+while users can compare models and inspect their limitations.
 It does not estimate verified transaction prices or current 2026 market values.
 
-## Source and provenance
+## 2. Dataset and provenance
 [Prasad Nirmal, SriLankan Vehicle(Car) Price Dataset, version 3](https://www.kaggle.com/datasets/prasadnirmal/srilankan-second-vehiclecar-price-dataset).
 Publisher metadata identifies Ikman.lk and Riyasewana.com as sources and lists MIT
 licensing. Original CSV and metadata are retained in `data/raw`.
@@ -15,14 +50,14 @@ SHA-256: `4208d2673cf4d9c8d3d6042dc8a1b97004671812441975f5879550059fbce1ab`.
 There are 9,788 source rows, spanning 2024-12-03 to 2025-02-05.
 Price is in LKR lakhs, confirmed by the project owner; 1 lakh is LKR 100,000.
 
-## Data analysis before model selection
+## 3. Exploratory data analysis
 Exploration in `scripts/analyze_data.py` uses only the training partition.
 The training price median is 42.5 lakhs, 95th percentile
 120.0, maximum 790.0, and skewness 3.80.
 The long upper tail motivates reporting RMSE and price-band errors alongside MAE.
 Extreme observations remain in evaluation rather than being removed to improve scores.
 
-| feature | unique_values | categories_under_3_rows | rows_in_rare_categories |
+| Feature | Distinct values | Categories with fewer than 3 rows | Rows in rare categories |
 |---|---|---|---|
 | brand | 48 | 14 | 18 |
 | model | 1061 | 758 | 893 |
@@ -44,7 +79,7 @@ not causal effects or sufficient reasons to remove an interacting feature.
 
 ![Training-only exploration](figures/training_eda.png)
 
-## Cleaning and leakage controls
+## 4. Data preparation and leakage controls
 18 exact duplicate rows were removed after category trimming,
 and 0 rows failed target/date/year checks. No literal source nulls
 were found, but the publisher already preprocessed the table; missing original
@@ -60,9 +95,10 @@ Feature signatures are a conservative proxy; without original listing IDs they
 cannot establish true vehicle identity. Three expanding temporal folds are used
 for parameter search, with matching validation groups purged from each training fold.
 
-## Candidate selection and preprocessing
+## 5. Model selection and preprocessing
+
 - **Random Forest:** bagging reference for nonlinear interactions and variance reduction.
-- **XGBoost:** regularized sequential boosting retained from Part 1.
+- **XGBoost:** regularized sequential boosting for nonlinear interactions.
 - **CatBoost:** native categorical processing is relevant to rare vehicle model labels.
 - **LightGBM:** an efficient histogram-based boosting alternative with bounded leaf growth.
 - **Ridge:** additive linear comparison to test whether tree complexity adds value.
@@ -85,21 +121,34 @@ meta-model (alpha 10), then refits bases on the training partition. Outer tempor
 folds evaluate the complete stack. Its bases are fixed, not selected with outer
 validation labels. Earliest rows without out-of-fold predictions do not train Ridge.
 
-## Evaluation and justification
+## 6. Evaluation and model justification
 Mean validation MAE is the selection rule fixed before the expanded run. MAE
 expresses average monetary error directly; RMSE emphasizes large mistakes and R²
 is unitless, not percentage accuracy. Fold standard deviation is descriptive,
 not a confidence interval. Timing includes parameter search and refitting on this
 machine; hardware-specific timings are not published-paper speed comparisons.
 
-| model | cv_mae | cv_std | test_mae | test_rmse | test_r2 | training_seconds | prediction_ms_per_row |
-|---|---|---|---|---|---|---|---|
-| Random Forest | 7.148 | 0.146 | 5.830 | 14.440 | 0.893 | 7.708 | 0.012 |
-| Stacking | 7.299 | 0.249 | 6.475 | 14.411 | 0.894 | 9.915 | 0.015 |
-| XGBoost | 7.562 | 0.312 | 6.821 | 14.241 | 0.896 | 1.388 | 0.004 |
-| CatBoost | 8.740 | 0.364 | 8.414 | 15.606 | 0.875 | 4.273 | 0.002 |
-| LightGBM | 9.410 | 0.230 | 7.590 | 15.283 | 0.880 | 1.807 | 0.007 |
-| Ridge | 11.124 | 0.671 | 9.994 | 20.694 | 0.781 | 0.244 | 0.002 |
+### Predictive performance
+
+| Model | Validation MAE (lakhs) | Fold SD (lakhs) | Test MAE (lakhs) | Test RMSE (lakhs) | Test R² |
+|---|---|---|---|---|---|
+| Random Forest | 7.148 | 0.146 | 5.830 | 14.440 | 0.893 |
+| Stacking | 7.299 | 0.249 | 6.475 | 14.411 | 0.894 |
+| XGBoost | 7.562 | 0.312 | 6.821 | 14.241 | 0.896 |
+| CatBoost | 8.740 | 0.364 | 8.414 | 15.606 | 0.875 |
+| LightGBM | 9.410 | 0.230 | 7.590 | 15.283 | 0.880 |
+| Ridge | 11.124 | 0.671 | 9.994 | 20.694 | 0.781 |
+
+### Computational performance
+
+| Model | Training (s) | Prediction (ms/row) |
+|---|---|---|
+| Random Forest | 7.708 | 0.012 |
+| Stacking | 9.915 | 0.015 |
+| XGBoost | 1.388 | 0.004 |
+| CatBoost | 4.273 | 0.002 |
+| LightGBM | 1.807 | 0.007 |
+| Ridge | 0.244 | 0.002 |
 
 ### Model choice and evidence
 
@@ -113,7 +162,7 @@ The training data has **1,061 model labels**, including **758** occurring fewer
 than three times. Median training price is **42.5 lakhs** and
 95th percentile **120.0 lakhs**. CatBoost tests native categorical
 handling; LightGBM tests another efficient nonlinear approach; Ridge provides a
-simpler additive reference. RF, XGBoost and stacking retain the Part 1 comparisons.
+simpler additive reference. RF, XGBoost and stacking provide complementary ensemble comparisons.
 
 Selection uses MAE because it measures average monetary error directly. RMSE
 reveals the influence of large mistakes; R² is not percentage accuracy. Runtime
@@ -121,18 +170,18 @@ and fold variation are supporting evidence, not alternate post-hoc selection rul
 A more complex model is not automatically better. Error by actual-price band and
 unseen model label must be considered before trusting an individual estimate.
 
-**Limit:** this test split was already inspected in Part 1. Part 2 results are
+**Limit:** this test split was already inspected during earlier development. Expanded results are
 exploratory. Newly collected future listings are required for independent confirmation.
 The source covers December 2024–February 2025; estimates are historical asking
 prices rather than current valuations or verified sale prices.
 
 
-## Error analysis
+## 7. Error analysis
 The band table below uses actual target prices for retrospective analysis only;
 those bands are not available when making a new prediction. Counts matter:
 small subgroups cannot establish reliable group-level performance.
 
-| model | actual_price_band_lakhs | count | mae_lakhs | rmse_lakhs |
+| Model | Actual price band (lakhs) | Listings | MAE (lakhs) | RMSE (lakhs) |
 |---|---|---|---|---|
 | Random Forest | 0–25 | 938 | 3.984 | 7.623 |
 | Random Forest | 25–50 | 1307 | 4.025 | 7.912 |
@@ -165,7 +214,7 @@ small subgroups cannot establish reliable group-level performance.
 | Stacking | 100–200 | 299 | 13.469 | 22.157 |
 | Stacking | >200 | 62 | 49.293 | 78.588 |
 
-| model | category | count | mae_lakhs |
+| Model | Model-label coverage | Listings | MAE (lakhs) |
 |---|---|---|---|
 | Random Forest | Seen model label | 3484 | 4.830 |
 | Random Forest | Unseen model label | 589 | 11.748 |
@@ -185,9 +234,7 @@ Permutation importance measures how much test MAE changes when an input is shuff
 It explains global reliance, not causation or the reason for a single prediction.
 Correlated inputs can share importance; shuffling may create implausible vehicles.
 
-## Comparison with existing approaches
-# Related approaches and comparison
-
+## 8. Comparison with existing approaches
 Sources checked on 14 October 2026. This is a methodological comparison, not a
 replication of published scores. Our controlled numerical comparisons use our
 own identical training/validation/test partitions.
@@ -199,50 +246,83 @@ own identical training/validation/test partitions.
 | LightGBM | Ke et al. (2017) describe efficient gradient-boosted trees, including GOSS and feature bundling. | Histogram-based LightGBM is evaluated as an efficiency-oriented nonlinear candidate, with restricted leaves and minimum leaf counts. | Our ordinary GBDT configuration uses row subsampling, not a GOSS replication. Runtime is measured locally; published speedups are not transferred to this dataset. |
 | Median and regularized linear references | Implemented here on the same splits. | Median establishes a no-feature error level; Ridge tests whether tree complexity improves on an additive relationship. | These are local benchmarks, not reproductions of the Sri Lankan study's linear model. |
 
-## References
-
-1. Basnayaka, D. (2023). [Prediction of Market Price for Used Cars in Sri Lanka Based on Machine Learning Approaches](https://dlib.iit.ac.lk/xmlui/handle/123456789/1634). IIT repository abstract.
-2. Prokhorenkova, L., Gusev, G., Vorobev, A., Dorogush, A. V., and Gulin, A. (2018). [CatBoost: unbiased boosting with categorical features](https://arxiv.org/abs/1706.09516). NeurIPS.
-3. Ke, G. et al. (2017). [LightGBM: A Highly Efficient Gradient Boosting Decision Tree](https://papers.nips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html). NeurIPS.
-4. [CatBoost categorical-feature documentation](https://catboost.ai/docs/en/features/categorical-features). Supports using native categorical input rather than external one-hot encoding.
-5. [LightGBM parameter-tuning documentation](https://lightgbm.readthedocs.io/en/v4.5.0/Parameters-Tuning.html). Supports constraining leaves and minimum observations to control complexity.
-
-
-## Single-sample inference and interface
+## 9. Single-sample inference and user interface
 Reserved source row 9763: actual 30.950 lakhs, selected-model
 prediction 29.963, absolute error 0.987.
 All exported estimators are reloaded and checked against their in-memory prediction.
 The Streamlit interface validates fields, switches models, shows estimates in LKR,
 and presents model-specific importance, diagnostics, comparison and optional data exploration.
 
-[Private live app](https://sri-lanka-vehicle-price-prediction.streamlit.app/) ·
-[Private repository](https://github.com/suwickramanayaka/sri-lanka-vehicle-price-prediction)
+## 10. Deployment and repository
 
-Reviewer access must be granted separately for private app/repository links.
-The interface specification is in `docs/interface.md`. Reproduction commands are in README.
+The application is deployed on **Streamlit Community Cloud** and uses the GitHub
+repository as its deployment source. The entry point is `app/app.py`. Saved model
+pipelines and their metadata support inference without retraining when a user
+changes the selected model.
 
-## Limitations and next evaluation
-The test set was already examined in Part 1. New models are exploratory additions,
-not independently confirmed improvements. Do not reshuffle familiar rows and call
-them a new unseen set. Collect later listings with verified units, real mileage,
-vehicle IDs and sale prices where possible; freeze the candidate choice, deduplicate
-by vehicle identity, then evaluate the frozen model on that new period.
+- **Deployed application:** [Sri Lankan Vehicle Price Prediction on Streamlit](https://sri-lanka-vehicle-price-prediction.streamlit.app/)
+- **Source repository:** [Sri Lankan Vehicle Price Prediction on GitHub](https://github.com/suwickramanayaka/sri-lanka-vehicle-price-prediction)
+
+Users enter vehicle characteristics, choose one of the six trained models and
+request an estimated listing price in LKR. The interface also provides model
+comparison metrics, permutation importance, prediction diagnostics and an optional
+explorer for the raw and processed datasets. Model switching updates the relevant
+results and explanations. Estimates describe the historical listing data used in
+this study and should not be interpreted as verified transaction prices.
+
+The repository contains the application, preprocessing and training code, saved
+model artifacts, evaluation evidence and the analysis notebook. The README
+provides installation and reproduction instructions. The interface specification
+is available in `docs/interface.md`.
+
+The deployment verification on 15 October 2026 confirmed that the application
+loaded all six model options and comparison charts. Live inference checks for
+CatBoost, LightGBM and Ridge returned price estimates. Local verification also
+passed all 28 automated tests, including split isolation, model loading,
+model switching and stacking checks. These checks establish implementation
+functionality rather than independent predictive validity.
+
+Access follows the application's and repository's sharing settings. Where either
+resource remains private, the reviewer requires authorized access.
+
+
+## 11. Limitations and future evaluation
+The test set was already examined during earlier development. New models are exploratory additions,
+not independently confirmed improvements. Resampling previously examined rows cannot provide an independent test. Future
+evaluation should use later listings with verified units, observed mileage, vehicle
+identifiers and, where available, sale prices. The model choice should be frozen
+before evaluation, with duplicate vehicle identities excluded across partitions.
 Data covers only about two months, is publisher-preprocessed, and may not reflect
 later import policies, exchange rates or supply changes. No causal, fairness,
 statistical-superiority or current-market accuracy claim is made.
 No deep learning, computer vision or reinforcement learning is used.
 
-## Submission status
-Implementation, report and notebook are prepared. Moodle submission is not performed.
-Confirm the lecturer's actual deadline (the guideline says tentatively 18 October),
-provide reviewer access, review and explain the work, and submit individually.
+## 12. Conclusion
+The study demonstrates an end-to-end workflow for historical vehicle listing-price
+regression, from data preparation and temporal evaluation to a deployed inference
+interface. Random Forest is the preferred model under the predefined validation-MAE
+criterion. XGBoost achieves a slightly lower test RMSE, while stacking does not
+improve validation MAE over Random Forest. The expanded comparison therefore
+supports evidence-based selection rather than assuming that additional model
+complexity produces better predictions.
 
-## Model-specific strengths, limitations and results
-## Interpreting the model comparison
+Performance varies substantially across price bands and previously unseen vehicle
+model labels. Reliable evaluation on new listings, with verified vehicle identities
+and source measurements, is the principal next step before broader practical use.
+
+## 13. References
+1. Basnayaka, D. (2023). [Prediction of Market Price for Used Cars in Sri Lanka Based on Machine Learning Approaches](https://dlib.iit.ac.lk/xmlui/handle/123456789/1634). IIT repository abstract.
+2. Prokhorenkova, L., Gusev, G., Vorobev, A., Dorogush, A. V., and Gulin, A. (2018). [CatBoost: unbiased boosting with categorical features](https://arxiv.org/abs/1706.09516). NeurIPS.
+3. Ke, G. et al. (2017). [LightGBM: A Highly Efficient Gradient Boosting Decision Tree](https://papers.nips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html). NeurIPS.
+4. [CatBoost categorical-feature documentation](https://catboost.ai/docs/en/features/categorical-features). Supports using native categorical input rather than external one-hot encoding.
+5. [LightGBM parameter-tuning documentation](https://lightgbm.readthedocs.io/en/v4.5.0/Parameters-Tuning.html). Supports constraining leaves and minimum observations to control complexity.
+
+## Appendix A. Model-specific strengths, limitations and results
+### Overview
 
 Random Forest is recommended by validation MAE. All models use the same 4,073 held-out listings. MAE measures average error; RMSE emphasizes large errors; R² is unitless. See the comparison table for measured results, not claims of statistical superiority.
 
-Part 2 candidates and stacking are exploratory additions after the test set was examined. Stacking uses fixed base configurations and a Ridge meta-model trained on inner temporal out-of-fold predictions. Outer temporal folds evaluate the full stacking procedure. The test set is unchanged and was already examined before stacking was added; results are exploratory. All models describe historical asking prices, not completed sales or current valuations.
+Additional model candidates and stacking are exploratory additions after the test set was examined. Stacking uses fixed base configurations and a Ridge meta-model trained on inner temporal out-of-fold predictions. Outer temporal folds evaluate the full stacking procedure. The test set is unchanged and was already examined before stacking was added; results are exploratory. All models describe historical asking prices, not completed sales or current valuations.
 
 ### Random Forest: strengths and limitations
 

@@ -8,4 +8,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
-ActivityAndAssignmentGuideline1.pdf
+.presentation-build/
+
+# Local presentation and supporting materials
+/deliverables/

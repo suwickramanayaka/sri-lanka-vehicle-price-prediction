@@ -6,6 +6,7 @@ from src.data import FEATURES, NUMERIC, CATEGORICAL
 
 class NativeCategories(TransformerMixin, BaseEstimator):
     def fit(self, X, y=None):
+        # Learn replacements only from the partition passed to fit, never the held-out rows.
         self.medians_ = X[NUMERIC].median().fillna(0)
         return self
 
@@ -13,6 +14,7 @@ class NativeCategories(TransformerMixin, BaseEstimator):
         check_is_fitted(self, 'medians_')
         frame = X[FEATURES].copy()
         frame[NUMERIC] = frame[NUMERIC].fillna(self.medians_).astype(float)
+        # CatBoost requires explicit string categories, including a marker for missing values.
         for c in CATEGORICAL:
             frame[c] = frame[c].fillna('__MISSING__').astype(str)
         return frame

@@ -1,6 +1,6 @@
 # Sri Lankan Vehicle Listing Price Explorer
 
-A reproducible Part 2 tabular regression project extending the Part 1 class activity.
+An end-to-end regression application for historical Sri Lankan vehicle listing prices.
 Compares Random Forest, XGBoost, CatBoost, LightGBM, Ridge and temporal stacking. Includes temporal validation,
 model export, an unseen example, an analysis notebook and a Streamlit interface.
 
@@ -47,7 +47,6 @@ For a fresh installation (Python 3.12 recommended):
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-lock.txt
-python -m src.train
 streamlit run app/app.py
 ```
 
@@ -60,7 +59,7 @@ Re-train the pickle after changing dependency versions.
 ```bash
 python scripts/analyze_data.py
 python -m src.train
-python scripts/part2_results.py
+python scripts/summarize_results.py
 python scripts/interpret_results.py
 python scripts/build_report.py
 python -m src.predict
@@ -107,29 +106,24 @@ matching test feature signatures from earlier training records. Use three expand
 time folds inside training, also purging matching validation signatures.
 
 Imputation and one-hot encoding are fitted inside every fold. Rare categories
-are pooled; unknown categories are handled. Both tree models do not need numeric scaling. Compare explicit, bounded model
+are pooled; unknown categories are handled. Tree models do not require numeric scaling; Ridge scales numeric inputs. CatBoost uses native categorical features instead of one-hot encoding. Compare explicit, bounded model
 configurations; choose minimum validation MAE. Preserve test scores for all models
 without choosing the winner from test performance. Do not retune on these scores.
 
-## Assignment mapping
+## Project structure
 
-| Requirement | Evidence |
+| Directory | Purpose |
 |---|---|
-| Sri Lankan dataset and provenance | Raw CSV, metadata, report |
-| Analysis and preprocessing | Notebook, audit, training summary |
-| Non-default RF and XGBoost parameters | `src/train.py`, experiments CSV |
-| Comparison and interpretation | Report, model comparison, figures |
-| Single-sample inference | `models/demo.json`, prediction CLI |
-| Exported pipeline | `models/model.pkl` |
-| Prediction interface | `app/app.py`, `docs/interface.md` |
-| Validation | `tests/test_pipeline.py` |
-
-Soft voting is a classification technique; this regression project compares
-regressors. Stacking is implemented as an additional ensemble experiment. A hosted URL is not required
-by the supplied guideline; the private hosted app is linked above. Moodle submission remains the
-student's submission step. Review the report and be prepared to explain every
-model, preprocessing choice and limitation in your own words.
-
+| `app/` | Streamlit interface |
+| `src/` | Data preparation, training, stacking and prediction |
+| `data/` | Source data, provenance and processed records |
+| `models/` | Saved estimators, model registry and example input |
+| `reports/` | Technical report, metrics and diagnostic figures |
+| `notebooks/` | Executed analysis and reproducible workflow |
+| `docs/` | Experiment design, interface documentation and references |
+| `scripts/` | Exploration, results summaries and report generation |
+| `tests/` | Pipeline, isolation and inference checks |
+| `deliverables/` | Presentation and supporting materials |
 
 ## Model switching
 All six fitted estimators are saved separately and registered in `models/metadata.json`.
@@ -173,20 +167,18 @@ The comparison table, feature importance and diagnostic charts include it.
 The interface screenshots above show the earlier two-model interface.
 
 
-## Part 2 deliverables
+## Documentation
 
-- [Experiment plan](docs/part2_experiment_plan.md): training-only findings, candidate rationale and fixed evaluation rules.
+- [Experiment plan](docs/experiment_plan.md): training-only findings, candidate rationale and fixed evaluation rules.
 - [Final report](reports/final_report.md): analysis, comparison, model-choice justification, sources and limitations.
 - [Executed notebook](notebooks/vehicle_price_analysis.ipynb): reproducible exploration, results and inference.
 - [Related approaches](docs/related_work.md): local vehicle-price study and primary CatBoost/LightGBM sources.
-- [Part 2 checklist](docs/part2_checklist.md): requirement-to-evidence mapping.
 
 CatBoost uses native categories; LightGBM uses one-hot inputs; Ridge supplies a
 regularized linear reference. A training-median benchmark is reported separately
-and is not offered as a prediction model in the app. The optional **Part 2**
+and is not offered as a prediction model in the app. The optional **Model selection**
 expander in the comparison tab presents training EDA, selection reasoning,
 validation fold scores and error breakdowns without crowding the prediction form.
 
 The expanded comparison reuses an already examined test set, so it is exploratory.
 It does not establish current-market accuracy or superiority over published studies.
-Moodle submission and lecturer access to the private links remain individual steps.

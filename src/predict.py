@@ -23,6 +23,7 @@ def predict(sample, model=None, metadata=None):
     frame,warnings=validate_sample(sample,metadata)
     value=float(model.predict(frame)[0])
     if value < 0: warnings.append('Model returned a negative estimate; this input is not supported reliably')
+    # Preserve training-scale values for analysis and provide rupees for the interface.
     return {'prediction':value,'unit':'LKR lakhs','prediction_lkr':value * 100000,'currency':'LKR','warnings':warnings,'model':metadata.get('active_model',metadata['winner'])}
 
 if __name__=='__main__':

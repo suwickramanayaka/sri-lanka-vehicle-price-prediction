@@ -60,7 +60,7 @@ intro=f"""## Interpreting the model comparison
 
 {meta['winner']} is recommended by validation MAE. All models use the same {len(test):,} held-out listings. MAE measures average error; RMSE emphasizes large errors; R² is unitless. See the comparison table for measured results, not claims of statistical superiority.
 
-Part 2 candidates and stacking are exploratory additions after the test set was examined. Stacking uses fixed base configurations and a Ridge meta-model trained on inner temporal out-of-fold predictions. Outer temporal folds evaluate the full stacking procedure. The test set is unchanged and was already examined before stacking was added; results are exploratory. All models describe historical asking prices, not completed sales or current valuations.
+Additional model candidates and stacking are exploratory additions after the test set was examined. Stacking uses fixed base configurations and a Ridge meta-model trained on inner temporal out-of-fold predictions. Outer temporal folds evaluate the full stacking procedure. The test set is unchanged and was already examined before stacking was added; results are exploratory. All models describe historical asking prices, not completed sales or current valuations.
 """
 (ROOT/'reports/results_interpretation.md').write_text(intro+'\n'+ '\n'.join(text + f'\n![{name} diagnostic graphs](figures/diagnostics_{name.lower().replace(chr(32), chr(95))}.png)\n' for name,text in texts.items()))
 print('Saved interpretations and all model-specific diagnostic graphs')

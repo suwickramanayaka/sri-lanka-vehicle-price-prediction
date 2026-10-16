@@ -25,9 +25,11 @@ from src.data import ROOT, FEATURES, NUMERIC, CATEGORICAL, load_data, split_data
 SEED=42
 
 def pipeline(model):
+    # Keep learned preprocessing inside the pipeline so cross-validation fits it per fold.
     if isinstance(model, NativeCatBoostRegressor):
         return Pipeline([('preprocess', NativeCategories()), ('model', model)])
     num=[('impute',SimpleImputer(strategy='median'))]
+    # Scaling makes Ridge's penalty comparable across numeric features with different units.
     if isinstance(model, Ridge):
         num.append(('scale', StandardScaler()))
     pre=ColumnTransformer([('numeric',Pipeline(num),NUMERIC),('category',Pipeline([
@@ -74,6 +76,7 @@ def main():
     fitted={}; rows=[]; experiments=[]; fold_scores=[]
     for name,(model,grid) in specs.items():
         print('Training',name,flush=True); start=time.perf_counter()
+        # sklearn maximizes scores; negate its MAE scores when exporting monetary errors.
         search=GridSearchCV(pipeline(model),grid,scoring='neg_mean_absolute_error',cv=folds,n_jobs=1,refit=True,error_score='raise')
         search.fit(train[FEATURES],train.price)
         fitted[name]=search.best_estimator_
@@ -124,6 +127,7 @@ def main():
     errors['prediction']=pred;errors['absolute_error']=abs(errors.price-pred)
     errors.to_csv(ROOT/'reports/test_predictions.csv',index=False)
     errors.groupby('brand').agg(count=('absolute_error','size'),mae=('absolute_error','mean')).sort_values('mae',ascending=False).to_csv(ROOT/'reports/errors_by_brand.csv')
+    # Shuffling measures global reliance in MAE units, not a single vehicle's explanation.
     importances = {}
     for name, estimator in fitted.items():
         importance = permutation_importance(estimator, test[FEATURES], test.price,
