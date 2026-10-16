@@ -10,5 +10,6 @@ __pycache__/
 !.env.example
 .presentation-build/
 
-# Local presentation and supporting materials
-/deliverables/
+# Keep supporting materials local; publish only the final presentation.
+/deliverables/*
+!/deliverables/vehicle-price-prediction-final.pptx
