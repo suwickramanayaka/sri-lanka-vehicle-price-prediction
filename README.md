@@ -17,22 +17,49 @@ that has been granted access. Repository access and app access are managed separ
 
 ## Interface preview
 
-Screenshots below show the local application interface using the saved models.
+Focused screenshots show the current application. Click an image to open it at
+full size. All six trained models are available in the application.
 
 ### Price estimation
 
-Enter vehicle details, choose a trained model, and estimate the listing
-price in LKR. The selected model's error metrics and feature importance appear
-alongside the result.
+Enter vehicle details, choose a trained model, and estimate the listing price in LKR.
+The result identifies the model and vehicle used for the prediction.
 
-![Vehicle details, an estimated listing price in LKR, and Random Forest feature importance](docs/screenshots/price-estimation.png)
+[![Price estimate for a ZOTYE Z100 using Random Forest](docs/screenshots/price-estimate.jpg)](docs/screenshots/price-estimate.jpg)
+
+<details>
+<summary>View the vehicle details form</summary>
+
+[![Vehicle input form with brand, model, year, engine capacity and other characteristics](docs/screenshots/vehicle-details.jpg)](docs/screenshots/vehicle-details.jpg)
+
+</details>
 
 ### Model comparison
 
-Compare the models on the same evaluation splits. Random Forest has lower
-validation and test MAE; XGBoost has slightly better test RMSE and R².
+All models use the same evaluation splits. Random Forest has the lowest validation
+and test MAE; XGBoost has the lowest test RMSE and highest test R².
 
-![Random Forest and XGBoost comparison charts for validation MAE, test MAE, RMSE and R-squared, with detailed scores](docs/screenshots/model-comparison.png)
+**Average prediction error - lower is better**
+
+[![Validation and test MAE for all six models](docs/screenshots/model-comparison-mae.jpg)](docs/screenshots/model-comparison-mae.jpg)
+
+**Large errors and model fit**
+
+[![Test RMSE and R-squared for all six models](docs/screenshots/model-comparison-fit.jpg)](docs/screenshots/model-comparison-fit.jpg)
+
+The scores are also provided as text for easy reading on smaller screens.
+
+| Model | Validation MAE | Test MAE | Test RMSE | Test R² |
+|---|---:|---:|---:|---:|
+| Random Forest | 7.148 | 5.830 | 14.440 | 0.893 |
+| Stacking | 7.299 | 6.475 | 14.411 | 0.894 |
+| XGBoost | 7.562 | 6.821 | 14.241 | 0.896 |
+| CatBoost | 8.740 | 8.414 | 15.606 | 0.875 |
+| LightGBM | 9.410 | 7.590 | 15.283 | 0.880 |
+| Ridge | 11.124 | 9.994 | 20.694 | 0.781 |
+
+MAE and RMSE are in lakhs; R² is unitless. Selection uses validation MAE.
+The previously examined test split makes this comparison exploratory.
 
 ## Start the application
 
@@ -168,7 +195,6 @@ Stacking may improve results but is not guaranteed to do so.
 
 Run `python -m src.predict --model Stacking` or select **Stacking** in the app.
 The comparison table, feature importance and diagnostic charts include it.
-The interface screenshots above show the earlier two-model interface.
 
 
 ## Documentation
