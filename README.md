@@ -11,9 +11,11 @@ model export, an unseen example, an analysis notebook and a Streamlit interface.
 Hosted on Streamlit Community Cloud. The app is private: sign in with an account
 that has been granted access. Repository access and app access are managed separately.
 
-## Presentation
+## Presentation and report
 
-[Download the project presentation (PowerPoint)](deliverables/vehicle-price-prediction-final.pptx)
+- [Project presentation (PowerPoint)](deliverables/vehicle-price-prediction-final.pptx)
+- [Final technical report (PDF)](deliverables/vehicle-price-prediction-report.pdf)
+- [Report source (Markdown)](reports/final_report.md)
 
 ## Interface preview
 
