@@ -55,7 +55,7 @@ with model_control:
     st.caption('Recommended: '+registry['winner']+' · Lowest validation MAE')
 model,meta=artifacts(selected_model,registry_path.stat().st_mtime_ns)
 demo=json.loads((ROOT/'models/demo.json').read_text())
-scores=pd.read_csv(ROOT/'reports/model_comparison.csv')
+scores=pd.read_csv(ROOT/'reports/metrics/model_comparison.csv')
 st.markdown('<div class="context-line">Historical listings · Dec 2024 – Feb 2025 &nbsp; / &nbsp; Estimates in LKR · Errors in lakhs &nbsp; / &nbsp; 1 lakh = LKR 100,000</div>',unsafe_allow_html=True)
 
 left,right=st.columns([1.15,1],gap='large')
@@ -124,7 +124,7 @@ with right:
     with st.container(border=True):
         st.write('Factors associated with predictions — '+selected_model)
         importance_file=meta['models'][selected_model]['importance_file']
-        importance=pd.read_csv(ROOT/'reports'/importance_file).head(5).set_index('feature')['mae_increase']
+        importance=pd.read_csv(ROOT/'reports/importance'/importance_file).head(5).set_index('feature')['mae_increase']
         importance.index=importance.index.map(lambda key:labels.get(key,{'year':'Manufacture year','engine_cc':'Engine capacity'}.get(key,key)))
         st.bar_chart(importance.rename('MAE increase (lakhs)'),horizontal=True,height=210,color='#1696a3')
         st.caption('Longer bars → greater model reliance. Global importance, not a personal or causal explanation.')
@@ -160,8 +160,8 @@ with performance:
             st.markdown('\n'.join('- '+item for item in limitations))
     st.caption(f'Training MAE: {row.train_mae:.2f} lakhs · Validation MAE: {row.cv_mae:.2f} lakhs · Test MAE: {row.test_mae:.2f} lakhs. Selection uses validation; the existing test split is exploratory.')
     slug=selected_model.lower().replace(' ','_')
-    interpretation_path=ROOT/f'reports/interpretation_{slug}.md'
-    diagnostics_path=ROOT/f'reports/diagnostics_{slug}.csv'
+    interpretation_path=ROOT/f'reports/interpretations/interpretation_{slug}.md'
+    diagnostics_path=ROOT/f'reports/predictions/diagnostics_{slug}.csv'
     st.markdown('#### Prediction diagnostics')
     st.caption(selected_model+' · Unseen test listings · Hover over a point to inspect its values')
     if diagnostics_path.exists():
@@ -199,7 +199,7 @@ with performance:
         with st.expander('Full analysis and technical details', expanded=False):
             st.markdown(interpretation_path.read_text())
 with comparison_tab:
-    scores=pd.read_csv(ROOT/'reports/model_comparison.csv')
+    scores=pd.read_csv(ROOT/'reports/metrics/model_comparison.csv')
     st.markdown('#### Model comparison')
     st.caption('Same temporal splits · Models ordered by validation MAE · Lower MAE is the selection criterion')
     metric_specs=[('cv_mae','Validation MAE','Lower is better · Model selection','lakhs',False),
@@ -236,13 +236,13 @@ with comparison_tab:
     st.markdown('[Dataset: Prasad Nirmal, Kaggle](https://www.kaggle.com/datasets/prasadnirmal/srilankan-second-vehiclecar-price-dataset) · Publisher metadata lists MIT licensing.')
 
     with st.expander('Model selection · Evidence and rationale'):
-        st.markdown((ROOT/'reports/model_selection.md').read_text())
+        st.markdown((ROOT/'reports/interpretations/model_selection.md').read_text())
         st.image(str(ROOT/'reports/figures/training_eda.png'))
         st.caption('Training-only exploration used to choose model families.')
         st.markdown('**Validation stability** · Fold scores are descriptive, not confidence intervals.')
-        st.dataframe(pd.read_csv(ROOT/'reports/validation_folds.csv'),hide_index=True)
+        st.dataframe(pd.read_csv(ROOT/'reports/metrics/validation_folds.csv'),hide_index=True)
         st.markdown('**Error by price band** · Bands use actual prices, for retrospective evaluation only.')
-        st.dataframe(pd.read_csv(ROOT/'reports/errors_by_price_band.csv'),hide_index=True)
+        st.dataframe(pd.read_csv(ROOT/'reports/errors/errors_by_price_band.csv'),hide_index=True)
 
 with dataset_tab:
     from src.dataset_explorer import render_dataset_explorer

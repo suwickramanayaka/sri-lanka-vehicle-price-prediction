@@ -22,7 +22,7 @@ Additional model candidates and stacking are exploratory additions after the tes
 
 **Large-error interpretation.** RMSE (14.44) is much larger than MAE (5.83), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
-![Random Forest diagnostic graphs](figures/diagnostics_random_forest.png)
+![Random Forest diagnostic graphs](../figures/diagnostics_random_forest.png)
 
 ### Stacking: strengths and limitations
 
@@ -42,7 +42,7 @@ Additional model candidates and stacking are exploratory additions after the tes
 
 **Large-error interpretation.** RMSE (14.41) is much larger than MAE (6.47), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
-![Stacking diagnostic graphs](figures/diagnostics_stacking.png)
+![Stacking diagnostic graphs](../figures/diagnostics_stacking.png)
 
 ### XGBoost: strengths and limitations
 
@@ -62,7 +62,7 @@ Additional model candidates and stacking are exploratory additions after the tes
 
 **Large-error interpretation.** RMSE (14.24) is much larger than MAE (6.82), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
-![XGBoost diagnostic graphs](figures/diagnostics_xgboost.png)
+![XGBoost diagnostic graphs](../figures/diagnostics_xgboost.png)
 
 ### CatBoost: strengths and limitations
 
@@ -82,7 +82,7 @@ Additional model candidates and stacking are exploratory additions after the tes
 
 **Large-error interpretation.** RMSE (15.61) is much larger than MAE (8.41), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
-![CatBoost diagnostic graphs](figures/diagnostics_catboost.png)
+![CatBoost diagnostic graphs](../figures/diagnostics_catboost.png)
 
 ### LightGBM: strengths and limitations
 
@@ -102,7 +102,7 @@ Additional model candidates and stacking are exploratory additions after the tes
 
 **Large-error interpretation.** RMSE (15.28) is much larger than MAE (7.59), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
-![LightGBM diagnostic graphs](figures/diagnostics_lightgbm.png)
+![LightGBM diagnostic graphs](../figures/diagnostics_lightgbm.png)
 
 ### Ridge: strengths and limitations
 
@@ -122,4 +122,4 @@ Additional model candidates and stacking are exploratory additions after the tes
 
 **Large-error interpretation.** RMSE (20.69) is much larger than MAE (9.99), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
-![Ridge diagnostic graphs](figures/diagnostics_ridge.png)
+![Ridge diagnostic graphs](../figures/diagnostics_ridge.png)

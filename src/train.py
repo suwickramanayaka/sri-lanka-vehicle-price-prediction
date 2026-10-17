@@ -41,17 +41,17 @@ def metrics(y,p):
     return {'mae':float(mean_absolute_error(y,p)), 'rmse':float(np.sqrt(mean_squared_error(y,p))), 'r2':float(r2_score(y,p))}
 
 def main():
-    for p in ['models','reports/figures','data/processed']: (ROOT/p).mkdir(parents=True,exist_ok=True)
+    for p in ['models','reports/figures','reports/data','reports/metrics','reports/errors','reports/predictions','reports/importance','data/processed']: (ROOT/p).mkdir(parents=True,exist_ok=True)
     df,audit=load_data(); train,test,demo,cutoff,purged=split_data(df)
     folds=temporal_folds(train)
     audit.update(train_rows=len(train),test_rows=len(test),demo_rows=len(demo),test_cutoff=cutoff,
                  purged_train_rows=purged,cv_fold_sizes=[{'train':len(a),'validation':len(b)} for a,b in folds])
-    (ROOT/'reports/data_audit.json').write_text(json.dumps(audit,indent=2))
+    (ROOT/'reports/data/data_audit.json').write_text(json.dumps(audit,indent=2))
     parts=[]
     for name,part in [('train',train),('test',test),('demo',demo)]:
         q=part[['row_id','date','group']].copy();q['split']=name;parts.append(q)
     pd.concat(parts).to_csv(ROOT/'data/processed/splits.csv',index=False)
-    train.describe(include='all').to_csv(ROOT/'reports/training_summary.csv')
+    train.describe(include='all').to_csv(ROOT/'reports/data/training_summary.csv')
     specs={
       'Random Forest':(RandomForestRegressor(n_estimators=180,max_depth=18,min_samples_leaf=2,max_features=0.8,n_jobs=2,random_state=SEED),
           [{'model__max_depth':[12],'model__min_samples_leaf':[2]}, {'model__max_depth':[22],'model__min_samples_leaf':[1]}, {'model__max_depth':[18],'model__min_samples_leaf':[3]}]),
@@ -105,7 +105,7 @@ def main():
                  'parameters': json.dumps(stack_parameters)}
     rows.append(stack_row)
     fold_scores.extend({'model':'Stacking','fold':i+1,'mae':float(v)} for i,v in enumerate(stack_scores))
-    pd.DataFrame(fold_scores).to_csv(ROOT/'reports/validation_folds.csv',index=False)
+    pd.DataFrame(fold_scores).to_csv(ROOT/'reports/metrics/validation_folds.csv',index=False)
     experiments.append({k: stack_row[k] for k in ['model','parameters','cv_mae','cv_std']})
     # Freeze winner by validation MAE before computing any held-out test results.
     winner=min(rows,key=lambda r:r['cv_mae'])['model']; best=fitted[winner]
@@ -120,13 +120,13 @@ def main():
         baseline_scores.append(mean_absolute_error(train.price.iloc[va],np.full(len(va),train.price.iloc[tr].median())))
     baseline = {'model':'Training median','cv_mae':float(np.mean(baseline_scores)),
                 **{'test_'+k:v for k,v in metrics(test.price,np.full(len(test),train.price.median())).items()}}
-    (ROOT/'reports/baseline.json').write_text(json.dumps(baseline,indent=2))
-    comparison=pd.DataFrame(rows).sort_values('cv_mae');comparison.to_csv(ROOT/'reports/model_comparison.csv',index=False)
-    pd.DataFrame(experiments).to_csv(ROOT/'reports/experiments.csv',index=False)
+    (ROOT/'reports/metrics/baseline.json').write_text(json.dumps(baseline,indent=2))
+    comparison=pd.DataFrame(rows).sort_values('cv_mae');comparison.to_csv(ROOT/'reports/metrics/model_comparison.csv',index=False)
+    pd.DataFrame(experiments).to_csv(ROOT/'reports/metrics/experiments.csv',index=False)
     pred=best.predict(test[FEATURES]); errors=test[['row_id','brand','model','year','date','price']].copy()
     errors['prediction']=pred;errors['absolute_error']=abs(errors.price-pred)
-    errors.to_csv(ROOT/'reports/test_predictions.csv',index=False)
-    errors.groupby('brand').agg(count=('absolute_error','size'),mae=('absolute_error','mean')).sort_values('mae',ascending=False).to_csv(ROOT/'reports/errors_by_brand.csv')
+    errors.to_csv(ROOT/'reports/predictions/test_predictions.csv',index=False)
+    errors.groupby('brand').agg(count=('absolute_error','size'),mae=('absolute_error','mean')).sort_values('mae',ascending=False).to_csv(ROOT/'reports/errors/errors_by_brand.csv')
     # Shuffling measures global reliance in MAE units, not a single vehicle's explanation.
     importances = {}
     for name, estimator in fitted.items():
@@ -135,10 +135,10 @@ def main():
         frame = pd.DataFrame({'feature': FEATURES, 'mae_increase': importance.importances_mean,
             'std': importance.importances_std}).sort_values('mae_increase', ascending=False)
         filename = 'feature_importance_' + name.lower().replace(' ', '_') + '.csv'
-        frame.to_csv(ROOT/'reports'/filename, index=False)
+        frame.to_csv(ROOT/'reports/importance'/filename, index=False)
         importances[name] = (frame, filename)
     imp = importances[winner][0]
-    imp.to_csv(ROOT/'reports/feature_importance.csv', index=False)
+    imp.to_csv(ROOT/'reports/importance/feature_importance.csv', index=False)
     fig,axes=plt.subplots(1,3,figsize=(15,4))
     axes[0].hist(train.price,bins=50,color='#147d92');axes[0].set(title='Training listing prices',xlabel='Price (LKR lakhs)',ylabel='Listings')
     axes[1].scatter(test.price,pred,s=8,alpha=.4);v=max(test.price.max(),pred.max());axes[1].plot([0,v],[0,v],'k--');axes[1].set(title='Held-out predictions',xlabel='Actual (LKR lakhs)',ylabel='Predicted (LKR lakhs)')

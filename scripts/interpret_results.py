@@ -10,7 +10,10 @@ import matplotlib.pyplot as plt
 from src.data import FEATURES,load_data,split_data
 from src.predict import load_artifacts
 
-scores=pd.read_csv(ROOT/'reports/model_comparison.csv').set_index('model')
+for folder in ['predictions', 'interpretations', 'figures']:
+    (ROOT/'reports'/folder).mkdir(parents=True, exist_ok=True)
+
+scores=pd.read_csv(ROOT/'reports/metrics/model_comparison.csv').set_index('model')
 _,test,_,_,_=split_data(load_data()[0])
 texts={}
 for name in scores.index:
@@ -18,7 +21,7 @@ for name in scores.index:
     predicted=model.predict(test[FEATURES])
     residual=test.price.to_numpy()-predicted
     slug=name.lower().replace(' ','_')
-    pd.DataFrame({'actual':test.price.to_numpy(),'predicted':predicted,'residual':residual}).to_csv(ROOT/f'reports/diagnostics_{slug}.csv',index=False)
+    pd.DataFrame({'actual':test.price.to_numpy(),'predicted':predicted,'residual':residual}).to_csv(ROOT/f'reports/predictions/diagnostics_{slug}.csv',index=False)
     fig,axes=plt.subplots(1,2,figsize=(11,4.4))
     hi=max(test.price.max(),predicted.max())
     axes[0].scatter(test.price,predicted,s=10,alpha=.35,color='#147d92')
@@ -30,7 +33,7 @@ for name in scores.index:
     fig.suptitle(f'{name} · fixed held-out test listings');fig.tight_layout()
     fig.savefig(ROOT/f'reports/figures/diagnostics_{slug}.png',dpi=150);plt.close(fig)
     r=scores.loc[name]
-    importance=pd.read_csv(ROOT/'reports'/meta['models'][name]['importance_file'])
+    importance=pd.read_csv(ROOT/'reports/importance'/meta['models'][name]['importance_file'])
     top=', '.join(importance.feature.head(4).str.replace('_',' '))
     from src.model_notes import MODEL_NOTES
     good, caution = MODEL_NOTES[name]
@@ -54,7 +57,7 @@ for name in scores.index:
 
 **Large-error interpretation.** RMSE ({r.test_rmse:.2f}) is much larger than MAE ({r.test_mae:.2f}), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 '''
-    (ROOT/f'reports/interpretation_{slug}.md').write_text(text)
+    (ROOT/f'reports/interpretations/interpretation_{slug}.md').write_text(text)
     texts[name]=text
 intro=f"""## Interpreting the model comparison
 
@@ -62,5 +65,5 @@ intro=f"""## Interpreting the model comparison
 
 Additional model candidates and stacking are exploratory additions after the test set was examined. Stacking uses fixed base configurations and a Ridge meta-model trained on inner temporal out-of-fold predictions. Outer temporal folds evaluate the full stacking procedure. The test set is unchanged and was already examined before stacking was added; results are exploratory. All models describe historical asking prices, not completed sales or current valuations.
 """
-(ROOT/'reports/results_interpretation.md').write_text(intro+'\n'+ '\n'.join(text + f'\n![{name} diagnostic graphs](figures/diagnostics_{name.lower().replace(chr(32), chr(95))}.png)\n' for name,text in texts.items()))
+(ROOT/'reports/interpretations/results_interpretation.md').write_text(intro+'\n'+ '\n'.join(text + f'\n![{name} diagnostic graphs](../figures/diagnostics_{name.lower().replace(chr(32), chr(95))}.png)\n' for name,text in texts.items()))
 print('Saved interpretations and all model-specific diagnostic graphs')

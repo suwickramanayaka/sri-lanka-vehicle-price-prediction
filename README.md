@@ -151,7 +151,7 @@ without choosing the winner from test performance. Do not retune on these scores
 | `src/` | Data preparation, training, stacking and prediction |
 | `data/` | Source data, provenance and processed records |
 | `models/` | Saved estimators, model registry and example input |
-| `reports/` | Technical report, metrics and diagnostic figures |
+| `reports/` | [Organized evaluation evidence](reports/README.md), technical report and figures |
 | `notebooks/` | Executed analysis and reproducible workflow |
 | `docs/` | Experiment design, interface documentation and references |
 | `scripts/` | Exploration, results summaries and report generation |
@@ -168,7 +168,7 @@ model name. The feature importance chart updates to the selected model’s own p
 
 The app includes model-specific strengths, limitations, score interpretation and
 actual-versus-predicted/residual graphs. Regenerate these after retraining with
-`python scripts/interpret_results.py`. Full text: `reports/results_interpretation.md`.
+`python scripts/interpret_results.py`. Full text: `reports/interpretations/results_interpretation.md`.
 
 Optional dataset explorer: open the third analysis tab and enable the explorer. Inspect raw or cleaned records, filter by brand/split, view distributions and download the filtered view. This is read-only and does not affect training. Processed records are shown before pipeline encoding.
 

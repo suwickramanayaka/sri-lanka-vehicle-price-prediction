@@ -114,8 +114,8 @@ def test_chart_follows_model_selection(monkeypatch):
         assert any('Factors associated with predictions — '+name in m.value for m in app.markdown)
         assert any(name+': strengths and limitations' in m.value for m in app.markdown)
         assert any('Residual graph' in m.value for m in app.markdown)
-    rf=original(ROOT/'reports/feature_importance_random_forest.csv').set_index('feature')
-    xgb=original(ROOT/'reports/feature_importance_xgboost.csv').set_index('feature')
+    rf=original(ROOT/'reports/importance/feature_importance_random_forest.csv').set_index('feature')
+    xgb=original(ROOT/'reports/importance/feature_importance_xgboost.csv').set_index('feature')
     assert set(rf.index)==set(FEATURES)==set(xgb.index)
     assert not np.allclose(rf.loc[FEATURES,'mae_increase'],xgb.loc[FEATURES,'mae_increase'])
 
@@ -196,15 +196,15 @@ def test_part2_model_handles_unseen_categories(name,sample):
 
 
 def test_part2_selection_and_error_evidence():
-    comparison=pd.read_csv(ROOT/'reports/model_comparison.csv')
+    comparison=pd.read_csv(ROOT/'reports/metrics/model_comparison.csv')
     meta=json.loads((ROOT/'models/metadata.json').read_text())
     assert meta['winner']==comparison.loc[comparison.cv_mae.idxmin(),'model']
-    folds=pd.read_csv(ROOT/'reports/validation_folds.csv')
+    folds=pd.read_csv(ROOT/'reports/metrics/validation_folds.csv')
     assert set(folds.model)==set(meta['models'])
     for name in meta['models']:
         actual=folds.loc[folds.model==name,'mae']
         assert len(actual)==3
         assert actual.mean()==pytest.approx(comparison.set_index('model').loc[name,'cv_mae'])
-    bands=pd.read_csv(ROOT/'reports/errors_by_price_band.csv')
+    bands=pd.read_csv(ROOT/'reports/errors/errors_by_price_band.csv')
     test=split_data(load_data()[0])[1]
     assert (bands.groupby('model')['count'].sum()==len(test)).all()

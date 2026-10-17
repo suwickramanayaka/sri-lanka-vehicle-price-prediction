@@ -5,11 +5,12 @@ import sys
 import pandas as pd
 import nbformat as nbf
 ROOT=Path(__file__).resolve().parents[1]
-a=json.loads((ROOT/'reports/data_audit.json').read_text())
+(ROOT/'reports').mkdir(exist_ok=True)
+a=json.loads((ROOT/'reports/data/data_audit.json').read_text())
 m=json.loads((ROOT/'models/metadata.json').read_text())
 d=json.loads((ROOT/'models/demo.json').read_text())
-c=pd.read_csv(ROOT/'reports/model_comparison.csv')
-e=json.loads((ROOT/'reports/eda_summary.json').read_text())
+c=pd.read_csv(ROOT/'reports/metrics/model_comparison.csv')
+e=json.loads((ROOT/'reports/data/eda_summary.json').read_text())
 
 def table(df):
     labels={'model':'Model','feature':'Feature','unique_values':'Distinct values','categories_under_3_rows':'Categories with fewer than 3 rows','rows_in_rare_categories':'Rows in rare categories','cv_mae':'Validation MAE (lakhs)','cv_std':'Fold SD (lakhs)','test_mae':'Test MAE (lakhs)','test_rmse':'Test RMSE (lakhs)','test_r2':'Test R²','training_seconds':'Training (s)','prediction_ms_per_row':'Prediction (ms/row)','actual_price_band_lakhs':'Actual price band (lakhs)','count':'Listings','mae_lakhs':'MAE (lakhs)','rmse_lakhs':'RMSE (lakhs)','category':'Model-label coverage'}
@@ -74,7 +75,7 @@ The training price median is {e['price_median']:.1f} lakhs, 95th percentile
 The long upper tail motivates reporting RMSE and price-band errors alongside MAE.
 Extreme observations remain in evaluation rather than being removed to improve scores.
 
-{table(pd.read_csv(ROOT/'reports/categorical_profile.csv'))}
+{table(pd.read_csv(ROOT/'reports/data/categorical_profile.csv'))}
 
 Many model labels are rare, motivating native categorical handling and regularized
 one-hot alternatives. Year/price Spearman association is
@@ -141,16 +142,16 @@ machine; hardware-specific timings are not published-paper speed comparisons.
 
 {table(c[['model','training_seconds','prediction_ms_per_row']])}
 
-{(ROOT/'reports/model_selection.md').read_text()}
+{(ROOT/'reports/interpretations/model_selection.md').read_text()}
 
 ## 7. Error analysis
 The band table below uses actual target prices for retrospective analysis only;
 those bands are not available when making a new prediction. Counts matter:
 small subgroups cannot establish reliable group-level performance.
 
-{table(pd.read_csv(ROOT/'reports/errors_by_price_band.csv'))}
+{table(pd.read_csv(ROOT/'reports/errors/errors_by_price_band.csv'))}
 
-{table(pd.read_csv(ROOT/'reports/errors_by_category_coverage.csv'))}
+{table(pd.read_csv(ROOT/'reports/errors/errors_by_category_coverage.csv'))}
 
 Per-brand counts and MAE for every model are saved in `errors_by_brand_all_models.csv`.
 Permutation importance measures how much test MAE changes when an input is shuffled.
@@ -228,7 +229,7 @@ and source measurements, is the principal next step before broader practical use
 {(ROOT/'docs/related_work.md').read_text().split('## References',1)[1].strip()}
 
 ## Appendix A. Model-specific strengths, limitations and results
-{(ROOT/'reports/results_interpretation.md').read_text().replace('## Interpreting the model comparison', '### Overview')}
+{(ROOT/'reports/interpretations/results_interpretation.md').read_text().replace('## Interpreting the model comparison', '### Overview').replace('](../figures/', '](figures/')}
 '''
 (ROOT/'reports/final_report.md').write_text(report.rstrip()+'\n')
 if '--report-only' in sys.argv:
@@ -242,13 +243,13 @@ nb.cells=[
  nbf.v4.new_code_cell(author_details),
  nbf.v4.new_code_cell("from pathlib import Path\nimport sys, json\nROOT = Path.cwd() if (Path.cwd() / 'src').exists() else Path.cwd().parent\nsys.path.insert(0, str(ROOT))\nimport pandas as pd\nfrom IPython.display import display, Image, Markdown\nfrom src.data import load_data, split_data, FEATURES\ndf, audit = load_data()\ntrain, test, demo, cutoff, purged = split_data(df)\ndisplay(pd.Series(audit))\ndisplay(train.head())"),
  nbf.v4.new_markdown_cell('## Training-only exploration and candidate rationale'),
- nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'reports/numeric_profile.csv'))\ndisplay(pd.read_csv(ROOT/'reports/categorical_profile.csv'))\ndisplay(Image(filename=str(ROOT/'reports/figures/training_eda.png')))\ndisplay(Markdown((ROOT/'docs/experiment_plan.md').read_text()))"),
+ nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'reports/data/numeric_profile.csv'))\ndisplay(pd.read_csv(ROOT/'reports/data/categorical_profile.csv'))\ndisplay(Image(filename=str(ROOT/'reports/figures/training_eda.png')))\ndisplay(Markdown((ROOT/'docs/experiment_plan.md').read_text()))"),
  nbf.v4.new_markdown_cell('## Reproduce model fitting\nSet RETRAIN=True to rerun the frozen search. No test-driven tuning.'),
- nbf.v4.new_code_cell("RETRAIN=False\nif RETRAIN:\n    from scripts.analyze_data import main as analyze\n    from src.train import main as train_models\n    from scripts.summarize_results import main as summarize\n    analyze()\n    train_models()\n    summarize()\ndisplay(pd.read_csv(ROOT/'reports/model_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'reports/experiments.csv'))\ndisplay(pd.read_csv(ROOT/'reports/validation_folds.csv'))\ndisplay(pd.Series(json.loads((ROOT/'reports/baseline.json').read_text())))"),
+ nbf.v4.new_code_cell("RETRAIN=False\nif RETRAIN:\n    from scripts.analyze_data import main as analyze\n    from src.train import main as train_models\n    from scripts.summarize_results import main as summarize\n    analyze()\n    train_models()\n    summarize()\ndisplay(pd.read_csv(ROOT/'reports/metrics/model_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'reports/metrics/experiments.csv'))\ndisplay(pd.read_csv(ROOT/'reports/metrics/validation_folds.csv'))\ndisplay(pd.Series(json.loads((ROOT/'reports/metrics/baseline.json').read_text())))"),
  nbf.v4.new_markdown_cell('## Justification and subgroup errors'),
- nbf.v4.new_code_cell("display(Markdown((ROOT/'reports/model_selection.md').read_text()))\ndisplay(pd.read_csv(ROOT/'reports/errors_by_price_band.csv'))\ndisplay(pd.read_csv(ROOT/'reports/errors_by_category_coverage.csv'))\ndisplay(Markdown((ROOT/'docs/related_work.md').read_text()))"),
+ nbf.v4.new_code_cell("display(Markdown((ROOT/'reports/interpretations/model_selection.md').read_text()))\ndisplay(pd.read_csv(ROOT/'reports/errors/errors_by_price_band.csv'))\ndisplay(pd.read_csv(ROOT/'reports/errors/errors_by_category_coverage.csv'))\ndisplay(Markdown((ROOT/'docs/related_work.md').read_text()))"),
  nbf.v4.new_markdown_cell('## Model-specific diagnostics and interpretations'),
- nbf.v4.new_code_cell("metadata=json.loads((ROOT/'models/metadata.json').read_text())\nfor name in metadata['models']:\n    slug=name.lower().replace(' ','_')\n    display(Markdown((ROOT/f'reports/interpretation_{slug}.md').read_text()))\n    display(Image(filename=str(ROOT/f'reports/figures/diagnostics_{slug}.png')))"),
+ nbf.v4.new_code_cell("metadata=json.loads((ROOT/'models/metadata.json').read_text())\nfor name in metadata['models']:\n    slug=name.lower().replace(' ','_')\n    display(Markdown((ROOT/f'reports/interpretations/interpretation_{slug}.md').read_text()))\n    display(Image(filename=str(ROOT/f'reports/figures/diagnostics_{slug}.png')))"),
  nbf.v4.new_markdown_cell('## Reload all models and infer the reserved sample'),
  nbf.v4.new_code_cell("from src.predict import predict, load_artifacts\nexample=json.loads((ROOT/'models/demo.json').read_text())\ndisplay(example['input'])\nfor name in metadata['models']:\n    display(predict(example['input'],*load_artifacts(name)))\nprint('Actual price (lakhs):',example['actual'])"),
  nbf.v4.new_markdown_cell('## Application and reproducibility\nRun `streamlit run app/app.py`. See README for the deployed application, reproduction commands and access information.')]

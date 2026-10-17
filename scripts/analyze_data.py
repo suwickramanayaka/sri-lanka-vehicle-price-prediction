@@ -15,20 +15,22 @@ def main():
     df, audit = load_data()
     train, _, _, _, _ = split_data(df)
     out = ROOT/'reports'
+    (out/'data').mkdir(parents=True, exist_ok=True)
+    (out/'figures').mkdir(parents=True, exist_ok=True)
     cards = []
     for c in CATEGORICAL:
         counts = train[c].value_counts(dropna=False)
         cards.append({'feature': c, 'unique_values': len(counts),
                       'categories_under_3_rows': int((counts < 3).sum()),
                       'rows_in_rare_categories': int(counts[counts < 3].sum())})
-    pd.DataFrame(cards).to_csv(out/'categorical_profile.csv', index=False)
-    train[NUMERIC+['price']].describe(percentiles=[.01,.5,.9,.95,.99]).to_csv(out/'numeric_profile.csv')
-    train.groupby('brand').agg(count=('price','size'),median_lakhs=('price','median')).sort_values('count',ascending=False).to_csv(out/'training_brands.csv')
+    pd.DataFrame(cards).to_csv(out/'data/categorical_profile.csv', index=False)
+    train[NUMERIC+['price']].describe(percentiles=[.01,.5,.9,.95,.99]).to_csv(out/'data/numeric_profile.csv')
+    train.groupby('brand').agg(count=('price','size'),median_lakhs=('price','median')).sort_values('count',ascending=False).to_csv(out/'data/training_brands.csv')
     summary = {'training_rows':len(train), 'price_skew':float(train.price.skew()),
                'price_median':float(train.price.median()), 'price_p95':float(train.price.quantile(.95)),
                'price_max':float(train.price.max()), 'numeric_spearman':train[NUMERIC+['price']].corr(method='spearman').to_dict(),
                'scope':'Training partition only; no test labels used for candidate selection.'}
-    (out/'eda_summary.json').write_text(json.dumps(summary,indent=2))
+    (out/'data/eda_summary.json').write_text(json.dumps(summary,indent=2))
     fig, ax = plt.subplots(2,2,figsize=(12,8))
     ax[0,0].hist(train.price,bins=50,color='#147d92');ax[0,0].set(title='Training price distribution',xlabel='Price (lakhs)',ylabel='Listings')
     ax[0,1].scatter(train.year,train.price,s=6,alpha=.25);ax[0,1].set(title='Year and advertised price',xlabel='Manufacture year',ylabel='Price (lakhs)')

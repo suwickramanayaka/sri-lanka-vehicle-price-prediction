@@ -10,11 +10,13 @@ from src.predict import load_artifacts
 
 
 def main():
+    for folder in ["errors", "interpretations"]:
+        (ROOT/"reports"/folder).mkdir(parents=True, exist_ok=True)
     train,test,_,_,_=split_data(load_data()[0])
     meta=json.loads((ROOT/'models/metadata.json').read_text())
-    scores=pd.read_csv(ROOT/'reports/model_comparison.csv')
-    baseline=json.loads((ROOT/'reports/baseline.json').read_text())
-    eda=json.loads((ROOT/'reports/eda_summary.json').read_text())
+    scores=pd.read_csv(ROOT/'reports/metrics/model_comparison.csv')
+    baseline=json.loads((ROOT/'reports/metrics/baseline.json').read_text())
+    eda=json.loads((ROOT/'reports/data/eda_summary.json').read_text())
     bands=[];brands=[];coverage=[]
     for name in meta['models']:
         model,_=load_artifacts(name)
@@ -30,9 +32,9 @@ def main():
         seen=frame['model'].isin(train.model)
         for label,mask in [('Seen model label',seen),('Unseen model label',~seen)]:
             coverage.append({'model':name,'category':label,'count':int(mask.sum()),'mae_lakhs':frame.loc[mask,'error'].mean()})
-    pd.DataFrame(bands).to_csv(ROOT/'reports/errors_by_price_band.csv',index=False)
-    pd.DataFrame(brands).to_csv(ROOT/'reports/errors_by_brand_all_models.csv',index=False)
-    pd.DataFrame(coverage).to_csv(ROOT/'reports/errors_by_category_coverage.csv',index=False)
+    pd.DataFrame(bands).to_csv(ROOT/'reports/errors/errors_by_price_band.csv',index=False)
+    pd.DataFrame(brands).to_csv(ROOT/'reports/errors/errors_by_brand_all_models.csv',index=False)
+    pd.DataFrame(coverage).to_csv(ROOT/'reports/errors/errors_by_category_coverage.csv',index=False)
     winner=scores.set_index('model').loc[meta['winner']]
     reduction=100*(baseline['test_mae']-winner.test_mae)/baseline['test_mae']
     summary=f'''### Model choice and evidence
@@ -60,7 +62,7 @@ exploratory. Newly collected future listings are required for independent confir
 The source covers December 2024–February 2025; estimates are historical asking
 prices rather than current valuations or verified sale prices.
 '''
-    (ROOT/'reports/model_selection.md').write_text(summary)
+    (ROOT/'reports/interpretations/model_selection.md').write_text(summary)
     print(summary)
 
 if __name__=='__main__':main()
