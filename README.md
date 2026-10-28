@@ -14,7 +14,7 @@ that has been granted access. Repository access and app access are managed separ
 ## Presentation and report
 
 - [Project presentation (PowerPoint)](deliverables/vehicle-price-prediction-final.pptx)
-- [Demo walkthrough (MP4, 4 min 49 sec)](deliverables/vehicle-price-prediction-demo.mp4) — narrated application screenshots covering prediction, explanations and data exploration.
+- [Demo walkthrough (MP4, 4 min 56 sec)](deliverables/vehicle-price-prediction-demo.mp4) — application screenshots with Rishi narration covering prediction, explanations and data exploration.
 - [Final technical report (PDF)](deliverables/vehicle-price-prediction-ngboost-report.pdf)
 - [Report source (Markdown)](reports/final_report.md)
 
