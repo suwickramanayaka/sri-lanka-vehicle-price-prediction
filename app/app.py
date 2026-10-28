@@ -137,6 +137,12 @@ with performance:
     st.caption(('RECOMMENDED' if selected_model == registry['winner'] else 'ALTERNATIVE') + ' · Recommendation uses validation MAE.')
     from src.model_notes import MODEL_NOTES
     strengths, limitations = MODEL_NOTES[selected_model]
+    if selected_model == 'NGBoost':
+        st.caption('NGBoost is the probabilistic model studied here. Natural-gradient boosting learns a Normal price distribution; the estimate is its mean. Model recommendation still uses validation MAE.')
+        with st.expander('How NGBoost responds to year and engine capacity'):
+            st.image(str(ROOT/'reports/figures/ngboost_partial_dependence.png'))
+            st.caption('Average model response on training vehicles, with one input varied. These are associations, not causal price changes; rare or unrealistic combinations can distort the curves.')
+            st.markdown((ROOT/'reports/interpretations/ngboost_study.md').read_text())
     if selected_model == 'Stacking':
         st.caption('Vehicle details → Random Forest + XGBoost → Ridge → final estimate. The base configurations are fixed separately from standalone tuning.')
     mae_card, rmse_card, r2_card = st.columns(3)
@@ -221,7 +227,7 @@ with comparison_tab:
                         x=alt.X('score:Q',title=unit,scale=alt.Scale(domain=domain)),
                         tooltip=['model:N',alt.Tooltip('score:Q',title=title,format='.3f')])
                     bars=base.mark_bar(cornerRadiusEnd=4,size=28).encode(
-                        color=alt.Color('model:N',scale=alt.Scale(domain=choices,range=['#38b2bd','#e8aa62','#68b984','#ed829b','#8aa5ec','#a78bfa']),legend=None))
+                        color=alt.Color('model:N',scale=alt.Scale(domain=choices,range=['#38b2bd','#e8aa62','#68b984','#ed829b','#8aa5ec','#a78bfa','#e5bf55']),legend=None))
                     labels_chart=base.mark_text(align='left',dx=6,color='#cbd5e1').encode(text=alt.Text('score:Q',format='.3f'))
                     st.altair_chart((bars+labels_chart).properties(height=max(175,40*len(scores))).configure_view(strokeOpacity=0),use_container_width=True)
                     st.caption('Best on this metric: '+top['model'])

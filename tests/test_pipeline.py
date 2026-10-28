@@ -57,7 +57,7 @@ def test_app_prediction_and_demo():
     next(b for b in app.button if b.label=='Estimate listing price').click().run(timeout=30)
     assert not app.exception
 
-@pytest.mark.parametrize('name',['Random Forest','XGBoost','CatBoost','LightGBM','Ridge','Stacking'])
+@pytest.mark.parametrize('name',['Random Forest','XGBoost','CatBoost','LightGBM','NGBoost','Ridge','Stacking'])
 def test_each_saved_model(name,sample):
     model,meta=load_artifacts(name)
     result=predict(sample,model,meta)
@@ -74,7 +74,7 @@ def test_switch_model_clears_and_recalculates():
     app=AppTest.from_file(str(ROOT/'app/app.py')).run(timeout=30)
     next(b for b in app.button if b.label=='Estimate listing price').click().run(timeout=30)
     assert not app.exception
-    assert next(s for s in app.selectbox if s.label=='Prediction model').options == ['Random Forest', 'XGBoost', 'CatBoost', 'LightGBM', 'Ridge', 'Stacking']
+    assert next(s for s in app.selectbox if s.label=='Prediction model').options == ['Random Forest', 'XGBoost', 'CatBoost', 'LightGBM', 'NGBoost', 'Ridge', 'Stacking']
     original=next(m.value for m in app.metric if m.label=='Estimated listing price')
     next(s for s in app.selectbox if s.label=='Prediction model').select('XGBoost').run(timeout=30)
     assert not app.exception
@@ -105,7 +105,7 @@ def test_chart_follows_model_selection(monkeypatch):
         return original(path,*args,**kwargs)
     monkeypatch.setattr(pd,'read_csv',track)
     app=AppTest.from_file(str(ROOT/'app/app.py')).run(timeout=30)
-    for name in ['XGBoost','Random Forest','CatBoost','LightGBM','Ridge','Stacking']:
+    for name in ['XGBoost','Random Forest','CatBoost','LightGBM','NGBoost','Ridge','Stacking']:
         reads.clear()
         next(s for s in app.selectbox if s.label=='Prediction model').select(name).run(timeout=30)
         assert not app.exception
@@ -208,3 +208,32 @@ def test_part2_selection_and_error_evidence():
     bands=pd.read_csv(ROOT/'reports/errors/errors_by_price_band.csv')
     test=split_data(load_data()[0])[1]
     assert (bands.groupby('model')['count'].sum()==len(test)).all()
+
+
+def test_ngboost_pipeline_fitted_state_and_reload(tmp_path):
+    from sklearn.exceptions import NotFittedError
+    from sklearn.base import clone
+    from sklearn.utils.validation import check_is_fitted
+    from src.ngboost_model import PipelineNGBoostRegressor
+    import pickle
+    estimator=PipelineNGBoostRegressor(n_estimators=3,verbose=False,random_state=42)
+    with pytest.raises(NotFittedError):check_is_fitted(estimator)
+    x=np.arange(40,dtype=float).reshape(-1,1)
+    estimator.fit(x,10+x[:,0]*.2)
+    check_is_fitted(estimator)
+    with pytest.raises(NotFittedError):check_is_fitted(clone(estimator))
+    restored=pickle.loads(pickle.dumps(estimator))
+    np.testing.assert_allclose(estimator.predict(x),restored.predict(x))
+    assert np.all(np.isfinite(restored.pred_dist(x).params['scale']))
+    assert np.all(restored.pred_dist(x).params['scale']>0)
+
+
+def test_ngboost_explanations_match_saved_evidence():
+    interval=pd.read_csv(ROOT/'reports/predictions/ngboost_intervals.csv')
+    audit=json.loads((ROOT/'reports/metrics/ngboost_distribution.json').read_text())
+    coverage=((interval.actual>=interval.lower_90)&(interval.actual<=interval.upper_90)).mean()
+    assert coverage==pytest.approx(audit['empirical_coverage'])
+    assert (interval.upper_90>=interval.lower_90).all()
+    curves=pd.read_csv(ROOT/'reports/importance/ngboost_partial_dependence.csv')
+    assert set(curves.feature)=={'year','engine_cc'}
+    assert np.isfinite(curves.mean_prediction_lakhs).all()

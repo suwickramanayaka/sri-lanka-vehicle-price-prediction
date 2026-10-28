@@ -2461,9 +2461,10 @@
     "xgboost": "3.4.1",
     "catboost": "1.2.10",
     "lightgbm": "4.7.0",
-    "pandas": "3.0.6",
+    "pandas": "2.3.3",
     "numpy": "2.5.3",
-    "streamlit": "1.65.0"
+    "streamlit": "1.65.0",
+    "ngboost": "0.5.11"
   },
   "python": "3.12.6",
   "raw_sha256": "4208d2673cf4d9c8d3d6042dc8a1b97004671812441975f5879550059fbce1ab",
@@ -2532,6 +2533,16 @@
         "r2": 0.880307553912142
       },
       "demo_prediction": 28.213395104954753
+    },
+    "NGBoost": {
+      "file": "ngboost.pkl",
+      "importance_file": "feature_importance_ngboost.csv",
+      "test_metrics": {
+        "mae": 8.580916780391028,
+        "rmse": 16.44567506413729,
+        "r2": 0.8613986614660325
+      },
+      "demo_prediction": 49.29349544676973
     },
     "Ridge": {
       "file": "ridge.pkl",

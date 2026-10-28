@@ -19,7 +19,7 @@ Mileage is excluded because the source values are calculated from vehicle age.
 
 ## Model selection and analysis
 
-The model selector offers Random Forest, XGBoost, CatBoost, LightGBM, Ridge and
+The model selector offers Random Forest, XGBoost, CatBoost, LightGBM, NGBoost, Ridge and
 Stacking. The default is chosen by validation MAE. Switching models clears the
 previous estimate and updates performance metrics, permutation importance and
 prediction diagnostics. Explanations distinguish average error from uncertainty

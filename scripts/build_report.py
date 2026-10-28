@@ -23,15 +23,16 @@ report=f'''# Sri Lankan Vehicle Listing Price Prediction
 **Author:** Sithum Wickramanayaka
 
 ## Abstract
-This study evaluates six regression approaches for predicting historical advertised
+This study investigates NGBoost probabilistic regression and evaluates seven regression approaches for predicting historical advertised
 vehicle prices in Sri Lanka. The dataset contains {a['raw_rows']:,} listings collected
 between December 2024 and February 2025. Training-only exploration informs model
 selection, while temporal validation and feature-group purging reduce leakage.
-The comparison includes Random Forest, XGBoost, CatBoost, LightGBM, Ridge and a
-Random Forest–XGBoost stack with a Ridge meta-model. Random Forest achieves the
+The comparison includes Random Forest, XGBoost, CatBoost, LightGBM, NGBoost, Ridge and a
+Random Forest–XGBoost stack with a Ridge meta-model. {m['winner']} achieves the
 lowest validation MAE of {c.iloc[0]['cv_mae']:.2f} lakhs and a test MAE of
 {c.iloc[0]['test_mae']:.2f} lakhs. A deployed Streamlit application supports
-single-vehicle inference and interactive inspection of the results. Because the
+single-vehicle inference and interactive inspection of the results, including
+NGBoost partial-dependence plots and permutation importance. Because the
 test set was examined during earlier development, the expanded findings are exploratory
 and require confirmation using newly collected listings.
 
@@ -107,11 +108,12 @@ for parameter search, with matching validation groups purged from each training 
 - **XGBoost:** regularized sequential boosting for nonlinear interactions.
 - **CatBoost:** native categorical processing is relevant to rare vehicle model labels.
 - **LightGBM:** an efficient histogram-based boosting alternative with bounded leaf growth.
+- **NGBoost:** the principal new-method study; natural-gradient boosting of Normal distribution parameters.
 - **Ridge:** additive linear comparison to test whether tree complexity adds value.
 - **Stacking:** fixed RF and XGBoost pipelines combined through scaled Ridge regression.
 - **Training median:** no-feature reference benchmark, not a selectable app model.
 
-All preprocessing is fitted within folds. RF, XGBoost, LightGBM and Ridge use
+All preprocessing is fitted within folds. RF, XGBoost, LightGBM, NGBoost and Ridge use
 numeric median and categorical mode imputation plus one-hot encoding with rare
 category pooling. Ridge scales numeric inputs; tree models do not require scaling.
 CatBoost receives string categories with a missing marker and fold-fitted numeric
@@ -126,6 +128,11 @@ Stacking uses inner purged temporal out-of-fold predictions to train its Ridge
 meta-model (alpha 10), then refits bases on the training partition. Outer temporal
 folds evaluate the complete stack. Its bases are fixed, not selected with outer
 validation labels. Earliest rows without out-of-fold predictions do not train Ridge.
+
+### 5.1 NGBoost methodology and explainability
+{(ROOT/'reports/interpretations/ngboost_study.md').read_text()}
+
+![NGBoost partial-dependence curves](figures/ngboost_partial_dependence.png)
 
 ## 6. Evaluation and model justification
 Mean validation MAE is the selection rule fixed before the expanded run. MAE
@@ -178,7 +185,7 @@ changes the selected model.
 - **Deployed application:** [Sri Lankan Vehicle Price Prediction on Streamlit](https://sri-lanka-vehicle-price-prediction.streamlit.app/)
 - **Source repository:** [Sri Lankan Vehicle Price Prediction on GitHub](https://github.com/suwickramanayaka/sri-lanka-vehicle-price-prediction)
 
-Users enter vehicle characteristics, choose one of the six trained models and
+Users enter vehicle characteristics, choose one of the seven trained models and
 request an estimated listing price in LKR. The interface also provides model
 comparison metrics, permutation importance, prediction diagnostics and an optional
 explorer for the raw and processed datasets. Model switching updates the relevant
@@ -190,12 +197,13 @@ model artifacts, evaluation evidence and the analysis notebook. The README
 provides installation and reproduction instructions. The interface specification
 is available in `docs/interface.md`.
 
-The deployment verification on 15 October 2026 confirmed that the application
-loaded all six model options and comparison charts. Live inference checks for
-CatBoost, LightGBM and Ridge returned price estimates. Local verification also
-passed all 28 automated tests, including split isolation, model loading,
-model switching and stacking checks. These checks establish implementation
-functionality rather than independent predictive validity.
+Local verification on 28 October 2026 passed all 31 automated tests, including
+split isolation, all seven model pipelines, model switching, stacking and NGBoost
+distribution outputs. The analysis notebook executed successfully. Browser checks
+confirmed NGBoost inference and its model-specific explanations. These checks
+establish implementation functionality rather than independent predictive validity.
+The last recorded cloud verification before this extension was on 15 October 2026;
+cloud availability of the new model must be verified after deployment.
 
 Access follows the application's and repository's sharing settings. Where either
 resource remains private, the reviewer requires authorized access.
@@ -210,13 +218,36 @@ before evaluation, with duplicate vehicle identities excluded across partitions.
 Data covers only about two months, is publisher-preprocessed, and may not reflect
 later import policies, exchange rates or supply changes. No causal, fairness,
 statistical-superiority or current-market accuracy claim is made.
+### Ethical use, representation and practical impact
+The public source contains vehicle attributes and advertised prices. No seller names,
+phone numbers or contact details are used as predictors. Public availability alone
+does not establish consent for every downstream use; source attribution and licence
+information are retained, and linking records to individuals is outside scope.
+
+The source represents online advertisers from two platforms over a short period,
+not the entire Sri Lankan vehicle market. Rare brands, unseen vehicle labels and
+high-price vehicles can have different error rates. Brand, town and equipment may
+reflect socioeconomic or geographic differences. Price-band, brand and category-
+coverage breakdowns expose some disparities but do not constitute a protected-group
+fairness audit: demographic attributes and verified identities are unavailable.
+
+Underestimation may disadvantage sellers; overestimation may mislead buyers or
+support inflated asking prices. The interface is an exploratory decision aid,
+not a basis for lending, insurance or automated eligibility decisions. Human
+inspection, current comparable listings and verified condition remain necessary.
+No model or explanation establishes causality. NGBoost uncertainty depends on the
+chosen distribution and can be poorly calibrated; displaying precision alone
+must not imply reliability. Future evaluation should include later data, wider
+regional and vehicle coverage, consent-aware collection and subgroup monitoring.
+
 No deep learning, computer vision or reinforcement learning is used.
 
 ## 12. Conclusion
 The study demonstrates an end-to-end workflow for historical vehicle listing-price
 regression, from data preparation and temporal evaluation to a deployed inference
-interface. Random Forest is the preferred model under the predefined validation-MAE
-criterion. XGBoost achieves a slightly lower test RMSE, while stacking does not
+interface. {m['winner']} is the preferred model under the predefined validation-MAE
+criterion. NGBoost is the focal methodological contribution, evaluated honestly
+against existing benchmarks rather than assumed to be superior. XGBoost achieves a slightly lower test RMSE, while stacking does not
 improve validation MAE over Random Forest. The expanded comparison therefore
 supports evidence-based selection rather than assuming that additional model
 complexity produces better predictions.
@@ -245,13 +276,15 @@ nb.cells=[
  nbf.v4.new_markdown_cell('## Training-only exploration and candidate rationale'),
  nbf.v4.new_code_cell("display(pd.read_csv(ROOT/'reports/data/numeric_profile.csv'))\ndisplay(pd.read_csv(ROOT/'reports/data/categorical_profile.csv'))\ndisplay(Image(filename=str(ROOT/'reports/figures/training_eda.png')))\ndisplay(Markdown((ROOT/'docs/experiment_plan.md').read_text()))"),
  nbf.v4.new_markdown_cell('## Reproduce model fitting\nSet RETRAIN=True to rerun the frozen search. No test-driven tuning.'),
- nbf.v4.new_code_cell("RETRAIN=False\nif RETRAIN:\n    from scripts.analyze_data import main as analyze\n    from src.train import main as train_models\n    from scripts.summarize_results import main as summarize\n    analyze()\n    train_models()\n    summarize()\ndisplay(pd.read_csv(ROOT/'reports/metrics/model_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'reports/metrics/experiments.csv'))\ndisplay(pd.read_csv(ROOT/'reports/metrics/validation_folds.csv'))\ndisplay(pd.Series(json.loads((ROOT/'reports/metrics/baseline.json').read_text())))"),
+ nbf.v4.new_code_cell("RETRAIN=False\nif RETRAIN:\n    from scripts.analyze_data import main as analyze\n    from src.train import main as train_models\n    from scripts.summarize_results import main as summarize\n    analyze()\n    train_models()\n    summarize()\n    import subprocess\n    subprocess.run([sys.executable, str(ROOT/'scripts/interpret_results.py')], check=True, cwd=ROOT)\n    subprocess.run([sys.executable, str(ROOT/'scripts/explain_ngboost.py')], check=True, cwd=ROOT)\ndisplay(pd.read_csv(ROOT/'reports/metrics/model_comparison.csv'))\ndisplay(pd.read_csv(ROOT/'reports/metrics/experiments.csv'))\ndisplay(pd.read_csv(ROOT/'reports/metrics/validation_folds.csv'))\ndisplay(pd.Series(json.loads((ROOT/'reports/metrics/baseline.json').read_text())))"),
  nbf.v4.new_markdown_cell('## Justification and subgroup errors'),
  nbf.v4.new_code_cell("display(Markdown((ROOT/'reports/interpretations/model_selection.md').read_text()))\ndisplay(pd.read_csv(ROOT/'reports/errors/errors_by_price_band.csv'))\ndisplay(pd.read_csv(ROOT/'reports/errors/errors_by_category_coverage.csv'))\ndisplay(Markdown((ROOT/'docs/related_work.md').read_text()))"),
  nbf.v4.new_markdown_cell('## Model-specific diagnostics and interpretations'),
  nbf.v4.new_code_cell("metadata=json.loads((ROOT/'models/metadata.json').read_text())\nfor name in metadata['models']:\n    slug=name.lower().replace(' ','_')\n    display(Markdown((ROOT/f'reports/interpretations/interpretation_{slug}.md').read_text()))\n    display(Image(filename=str(ROOT/f'reports/figures/diagnostics_{slug}.png')))"),
  nbf.v4.new_markdown_cell('## Reload all models and infer the reserved sample'),
  nbf.v4.new_code_cell("from src.predict import predict, load_artifacts\nexample=json.loads((ROOT/'models/demo.json').read_text())\ndisplay(example['input'])\nfor name in metadata['models']:\n    display(predict(example['input'],*load_artifacts(name)))\nprint('Actual price (lakhs):',example['actual'])"),
+ nbf.v4.new_markdown_cell('## NGBoost methodology, explainability and distribution checks'),
+ nbf.v4.new_code_cell("display(Markdown((ROOT/'reports/interpretations/ngboost_study.md').read_text()))\ndisplay(Image(filename=str(ROOT/'reports/figures/ngboost_partial_dependence.png')))\ndisplay(pd.Series(json.loads((ROOT/'reports/metrics/ngboost_distribution.json').read_text())))"),
  nbf.v4.new_markdown_cell('## Application and reproducibility\nRun `streamlit run app/app.py`. See README for the deployed application, reproduction commands and access information.')]
 nbf.write(nb,ROOT/'notebooks/vehicle_price_analysis.ipynb')
 print('Technical report and notebook created')

@@ -34,3 +34,24 @@ Expanded results are exploratory, even though the new selection uses validation
 only. A truly independent confirmation needs newly collected future listings;
 repartitioning these known rows would not make them unseen again. No claims of
 statistical superiority or present-day valuation accuracy are made.
+
+## NGBoost extension - frozen 27 October 2026
+
+NGBoost is the principal new-method study; existing models remain benchmarks.
+No NGBoost or natural-gradient entry was found in the searchable lecture material.
+This is a document check, not confirmation of unrecorded classroom discussion.
+
+Before fitting, fix a Normal conditional distribution and log-score objective,
+natural gradients, depth-3 trees with minimum leaf size 10, learning rate 0.03,
+seed 42, and candidates of 100, 200 and 300 boosting rounds. Select using the
+same three purged temporal folds and MAE rule. No test-driven expansion of this
+search is permitted. Normal is a transparent first distributional assumption;
+its limitations for positive, skewed prices must be reported rather than hidden.
+NGBoost receives fold-fitted dense one-hot inputs. Other estimators keep their
+existing settings. Refit all artifacts in the updated dependency environment.
+
+Evaluate point MAE/RMSE/R² and runtime. Additionally report test negative
+log-likelihood and empirical 90% interval coverage/width without using them to
+retune. Intervals are model-based, uncalibrated and not a current-market guarantee.
+Use permutation importance and training-background partial dependence for year
+and engine capacity. Keep the established test-exposure limitation explicit.

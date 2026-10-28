@@ -7,6 +7,8 @@ CatBoost,Seen model label,3484,7.66406208429324
 CatBoost,Unseen model label,589,12.850599434526952
 LightGBM,Seen model label,3484,6.760240130560218
 LightGBM,Unseen model label,589,12.496517283733722
+NGBoost,Seen model label,3484,7.778966481666177
+NGBoost,Unseen model label,589,13.324541297805942
 Ridge,Seen model label,3484,8.379421495181118
 Ridge,Unseen model label,589,19.54233162905647
 Stacking,Seen model label,3484,5.622210502358438

@@ -14,3 +14,6 @@ __pycache__/
 /deliverables/*
 !/deliverables/vehicle-price-prediction-final.pptx
 !/deliverables/vehicle-price-prediction-report.pdf
+
+!/deliverables/vehicle-price-prediction-ngboost-report.pdf
+!/deliverables/vehicle-price-prediction-demo.mp4

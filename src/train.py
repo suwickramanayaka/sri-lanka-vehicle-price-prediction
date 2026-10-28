@@ -20,6 +20,10 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.inspection import permutation_importance
 from xgboost import XGBRegressor
+from src.ngboost_model import PipelineNGBoostRegressor as NGBRegressor
+from ngboost.distns import Normal
+from ngboost.scores import LogScore
+from sklearn.tree import DecisionTreeRegressor
 from src.data import ROOT, FEATURES, NUMERIC, CATEGORICAL, load_data, split_data, temporal_folds
 
 SEED=42
@@ -34,7 +38,7 @@ def pipeline(model):
         num.append(('scale', StandardScaler()))
     pre=ColumnTransformer([('numeric',Pipeline(num),NUMERIC),('category',Pipeline([
         ('impute',SimpleImputer(strategy='most_frequent')),
-        ('encode',OneHotEncoder(handle_unknown='ignore',min_frequency=3,sparse_output=True))]),CATEGORICAL)])
+        ('encode',OneHotEncoder(handle_unknown='ignore',min_frequency=3,sparse_output=not isinstance(model, NGBRegressor)))]),CATEGORICAL)])
     return Pipeline([('preprocess',pre),('model',model)])
 
 def metrics(y,p):
@@ -71,6 +75,11 @@ def main():
           [{'model__num_leaves':[15], 'model__min_child_samples':[20]},
            {'model__num_leaves':[31], 'model__min_child_samples':[30]},
            {'model__num_leaves':[31], 'model__min_child_samples':[50]}]),
+      # Freeze this small search before examining NGBoost test results.
+      'NGBoost': (NGBRegressor(Dist=Normal, Score=LogScore,
+          Base=DecisionTreeRegressor(max_depth=3, min_samples_leaf=10, random_state=SEED),
+          natural_gradient=True, learning_rate=.03, verbose=False, random_state=SEED),
+          [{'model__n_estimators':[100]}, {'model__n_estimators':[200]}, {'model__n_estimators':[300]}]),
       'Ridge': (Ridge(solver='lsqr', max_iter=5000), [{'model__alpha':[1,10,100]}]),
     })
     fitted={}; rows=[]; experiments=[]; fold_scores=[]
@@ -150,7 +159,7 @@ def main():
         'categories':{c:sorted(train[c].dropna().unique().tolist()) for c in CATEGORICAL},
         'brand_models':{b:sorted(p.model.unique().tolist()) for b,p in train.groupby('brand')},
         'ranges':{c:[float(train[c].min()),float(train[c].max())] for c in NUMERIC},
-        'versions':{p:version(p) for p in ['scikit-learn','xgboost','catboost','lightgbm','pandas','numpy','streamlit']},
+        'versions':{p:version(p) for p in ['scikit-learn','xgboost','catboost','lightgbm','pandas','numpy','streamlit','ngboost']},
         'python':platform.python_version(),'raw_sha256':hashlib.sha256((ROOT/'data/raw/car_price_dataset.csv').read_bytes()).hexdigest(),
         'test_metrics':metrics(test.price,pred),'selected_parameters':(stack_parameters if winner == 'Stacking' else best.named_steps['model'].get_params())}
     metadata['models'] = {}
@@ -169,7 +178,7 @@ def main():
             'demo_prediction': float(restored.predict(demo[FEATURES])[0]),
         }
     with (ROOT/'models/model.pkl').open('wb') as f: pickle.dump(best,f)
-    (ROOT/'models/metadata.json').write_text(json.dumps(metadata,indent=2))
+    (ROOT/'models/metadata.json').write_text(json.dumps(metadata,indent=2,default=str))
     with (ROOT/'models/model.pkl').open('rb') as f: reloaded=pickle.load(f)
     np.testing.assert_allclose(reloaded.predict(demo[FEATURES]),best.predict(demo[FEATURES]))
     record={'input':demo[FEATURES].iloc[0].to_dict(),'actual':float(demo.price.iloc[0]),'prediction':float(reloaded.predict(demo[FEATURES])[0]),'row_id':int(demo.row_id.iloc[0])}

@@ -1,0 +1,2 @@
+# Optional dependency for scripts/export_report_pdf.py
+reportlab>=4,<5

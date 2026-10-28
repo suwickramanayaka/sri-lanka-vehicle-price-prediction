@@ -5,15 +5,16 @@
 **Author:** Sithum Wickramanayaka
 
 ## Abstract
-This study evaluates six regression approaches for predicting historical advertised
+This study investigates NGBoost probabilistic regression and evaluates seven regression approaches for predicting historical advertised
 vehicle prices in Sri Lanka. The dataset contains 9,788 listings collected
 between December 2024 and February 2025. Training-only exploration informs model
 selection, while temporal validation and feature-group purging reduce leakage.
-The comparison includes Random Forest, XGBoost, CatBoost, LightGBM, Ridge and a
+The comparison includes Random Forest, XGBoost, CatBoost, LightGBM, NGBoost, Ridge and a
 Random Forest–XGBoost stack with a Ridge meta-model. Random Forest achieves the
 lowest validation MAE of 7.15 lakhs and a test MAE of
 5.83 lakhs. A deployed Streamlit application supports
-single-vehicle inference and interactive inspection of the results. Because the
+single-vehicle inference and interactive inspection of the results, including
+NGBoost partial-dependence plots and permutation importance. Because the
 test set was examined during earlier development, the expanded findings are exploratory
 and require confirmation using newly collected listings.
 
@@ -101,11 +102,12 @@ for parameter search, with matching validation groups purged from each training 
 - **XGBoost:** regularized sequential boosting for nonlinear interactions.
 - **CatBoost:** native categorical processing is relevant to rare vehicle model labels.
 - **LightGBM:** an efficient histogram-based boosting alternative with bounded leaf growth.
+- **NGBoost:** the principal new-method study; natural-gradient boosting of Normal distribution parameters.
 - **Ridge:** additive linear comparison to test whether tree complexity adds value.
 - **Stacking:** fixed RF and XGBoost pipelines combined through scaled Ridge regression.
 - **Training median:** no-feature reference benchmark, not a selectable app model.
 
-All preprocessing is fitted within folds. RF, XGBoost, LightGBM and Ridge use
+All preprocessing is fitted within folds. RF, XGBoost, LightGBM, NGBoost and Ridge use
 numeric median and categorical mode imputation plus one-hot encoding with rare
 category pooling. Ridge scales numeric inputs; tree models do not require scaling.
 CatBoost receives string categories with a missing marker and fold-fitted numeric
@@ -120,6 +122,56 @@ Stacking uses inner purged temporal out-of-fold predictions to train its Ridge
 meta-model (alpha 10), then refits bases on the training partition. Outer temporal
 folds evaluate the complete stack. Its bases are fixed, not selected with outer
 validation labels. Earliest rows without out-of-fold predictions do not train Ridge.
+
+### 5.1 NGBoost methodology and explainability
+### NGBoost: probabilistic vehicle-price regression
+
+NGBoost is the principal method studied in this extension. It uses shallow trees
+and natural-gradient updates to learn the mean and scale of a conditional Normal
+price distribution. Its training objective is negative log-likelihood; configuration
+selection uses validation MAE so point predictions remain comparable to the other models.
+Unlike Random Forest's averaging or conventional point-prediction boosting, it
+updates multiple distribution parameters using a geometry-adjusted gradient.
+This is a non-deep-learning method. See [Duan et al. (2020)](https://proceedings.mlr.press/v119/duan20a.html).
+
+**Design.** Fold-fitted median/mode imputation and dense one-hot encoding with rare
+category pooling; depth-3 base trees, minimum leaf size 10, learning rate 0.03,
+seed 42, and 100/200/300 rounds. Selected settings: `{"model__n_estimators": 300}`.
+Normal is an explicit simplifying assumption, not evidence that car prices are Normal.
+
+**Measured performance.** Validation MAE 9.43 lakhs; test MAE
+8.58 lakhs; RMSE 16.45 lakhs; R² 0.861.
+The validation-selected recommendation is Random Forest. The research focus
+and the best point-prediction model need not be the same.
+
+**Global explanation.** The four strongest permutation-importance fields are
+year, brand, engine cc, gear. Importance is the increase in test MAE after shuffling; it describes
+model reliance rather than causation or a direction of effect.
+
+**Partial-dependence interpretation.** Manufacture year: the average model prediction changes from 27.28 to 94.33 lakhs across 1986–2018. Engine capacity (cc): the average model prediction changes from 48.66 to 84.69 lakhs across 650–2000.
+Newer vehicles often have higher asking prices, and engine capacity can track
+vehicle class. The plotted response should be compared with these expectations;
+non-monotonic sections may reflect model interactions, sampling and sparse data.
+The curves average over 256 training vehicles and cover the training 5th–95th
+percentiles. Varying one feature can create implausible brand/model/year/engine
+combinations. They are not causal depreciation curves or individual explanations.
+
+**Distribution check.** Test negative log-likelihood is 3.741
+(in lakh units). Nominal 90% intervals contain 89.9%
+of observed test prices, with mean width 33.61 lakhs.
+2.4% have negative lower bounds.
+Coverage must be considered alongside width: a wide range can cover many prices
+without being useful. These intervals have not been independently calibrated and
+are not displayed as guaranteed price ranges in the prediction form. Negative
+bounds expose a limitation of the Normal assumption for positive prices.
+
+**Evidence limits.** The test set was examined before this extension; results are
+exploratory. No test-driven retuning was performed. New, later listings are needed
+for independent evaluation and calibration. Better uncertainty or point accuracy
+than existing models is not assumed.
+
+
+![NGBoost partial-dependence curves](figures/ngboost_partial_dependence.png)
 
 ## 6. Evaluation and model justification
 Mean validation MAE is the selection rule fixed before the expanded run. MAE
@@ -137,18 +189,20 @@ machine; hardware-specific timings are not published-paper speed comparisons.
 | XGBoost | 7.562 | 0.312 | 6.821 | 14.241 | 0.896 |
 | CatBoost | 8.740 | 0.364 | 8.414 | 15.606 | 0.875 |
 | LightGBM | 9.410 | 0.230 | 7.590 | 15.283 | 0.880 |
+| NGBoost | 9.435 | 0.461 | 8.581 | 16.446 | 0.861 |
 | Ridge | 11.124 | 0.671 | 9.994 | 20.694 | 0.781 |
 
 ### Computational performance
 
 | Model | Training (s) | Prediction (ms/row) |
 |---|---|---|
-| Random Forest | 7.708 | 0.012 |
-| Stacking | 9.915 | 0.015 |
-| XGBoost | 1.388 | 0.004 |
-| CatBoost | 4.273 | 0.002 |
-| LightGBM | 1.807 | 0.007 |
-| Ridge | 0.244 | 0.002 |
+| Random Forest | 8.168 | 0.011 |
+| Stacking | 10.281 | 0.015 |
+| XGBoost | 1.404 | 0.004 |
+| CatBoost | 4.529 | 0.002 |
+| LightGBM | 1.826 | 0.007 |
+| NGBoost | 37.045 | 0.355 |
+| Ridge | 0.259 | 0.003 |
 
 ### Model choice and evidence
 
@@ -203,6 +257,11 @@ small subgroups cannot establish reliable group-level performance.
 | LightGBM | 50–100 | 1467 | 7.081 | 11.588 |
 | LightGBM | 100–200 | 299 | 17.041 | 24.746 |
 | LightGBM | >200 | 62 | 53.081 | 78.813 |
+| NGBoost | 0–25 | 938 | 6.498 | 10.869 |
+| NGBoost | 25–50 | 1307 | 6.652 | 10.492 |
+| NGBoost | 50–100 | 1467 | 7.639 | 11.742 |
+| NGBoost | 100–200 | 299 | 18.299 | 25.911 |
+| NGBoost | >200 | 62 | 56.183 | 84.616 |
 | Ridge | 0–25 | 938 | 9.450 | 14.718 |
 | Ridge | 25–50 | 1307 | 7.087 | 13.108 |
 | Ridge | 50–100 | 1467 | 7.426 | 13.361 |
@@ -224,6 +283,8 @@ small subgroups cannot establish reliable group-level performance.
 | CatBoost | Unseen model label | 589 | 12.851 |
 | LightGBM | Seen model label | 3484 | 6.760 |
 | LightGBM | Unseen model label | 589 | 12.497 |
+| NGBoost | Seen model label | 3484 | 7.779 |
+| NGBoost | Unseen model label | 589 | 13.325 |
 | Ridge | Seen model label | 3484 | 8.379 |
 | Ridge | Unseen model label | 589 | 19.542 |
 | Stacking | Seen model label | 3484 | 5.622 |
@@ -246,6 +307,8 @@ own identical training/validation/test partitions.
 | LightGBM | Ke et al. (2017) describe efficient gradient-boosted trees, including GOSS and feature bundling. | Histogram-based LightGBM is evaluated as an efficiency-oriented nonlinear candidate, with restricted leaves and minimum leaf counts. | Our ordinary GBDT configuration uses row subsampling, not a GOSS replication. Runtime is measured locally; published speedups are not transferred to this dataset. |
 | Median and regularized linear references | Implemented here on the same splits. | Median establishes a no-feature error level; Ridge tests whether tree complexity improves on an additive relationship. | These are local benchmarks, not reproductions of the Sri Lankan study's linear model. |
 
+| NGBoost | Duan et al. (2020) use natural gradients to learn conditional distribution parameters. | Normal NGBoost is the focal probabilistic regression study; point metrics, likelihood and interval coverage are evaluated on the same splits. | Distributional assumptions and existing test exposure limit interpretation; paper benchmark scores are not directly comparable. |
+
 ## 9. Single-sample inference and user interface
 Reserved source row 9763: actual 30.950 lakhs, selected-model
 prediction 29.963, absolute error 0.987.
@@ -263,7 +326,7 @@ changes the selected model.
 - **Deployed application:** [Sri Lankan Vehicle Price Prediction on Streamlit](https://sri-lanka-vehicle-price-prediction.streamlit.app/)
 - **Source repository:** [Sri Lankan Vehicle Price Prediction on GitHub](https://github.com/suwickramanayaka/sri-lanka-vehicle-price-prediction)
 
-Users enter vehicle characteristics, choose one of the six trained models and
+Users enter vehicle characteristics, choose one of the seven trained models and
 request an estimated listing price in LKR. The interface also provides model
 comparison metrics, permutation importance, prediction diagnostics and an optional
 explorer for the raw and processed datasets. Model switching updates the relevant
@@ -275,12 +338,13 @@ model artifacts, evaluation evidence and the analysis notebook. The README
 provides installation and reproduction instructions. The interface specification
 is available in `docs/interface.md`.
 
-The deployment verification on 15 October 2026 confirmed that the application
-loaded all six model options and comparison charts. Live inference checks for
-CatBoost, LightGBM and Ridge returned price estimates. Local verification also
-passed all 28 automated tests, including split isolation, model loading,
-model switching and stacking checks. These checks establish implementation
-functionality rather than independent predictive validity.
+Local verification on 28 October 2026 passed all 31 automated tests, including
+split isolation, all seven model pipelines, model switching, stacking and NGBoost
+distribution outputs. The analysis notebook executed successfully. Browser checks
+confirmed NGBoost inference and its model-specific explanations. These checks
+establish implementation functionality rather than independent predictive validity.
+The last recorded cloud verification before this extension was on 15 October 2026;
+cloud availability of the new model must be verified after deployment.
 
 Access follows the application's and repository's sharing settings. Where either
 resource remains private, the reviewer requires authorized access.
@@ -295,13 +359,36 @@ before evaluation, with duplicate vehicle identities excluded across partitions.
 Data covers only about two months, is publisher-preprocessed, and may not reflect
 later import policies, exchange rates or supply changes. No causal, fairness,
 statistical-superiority or current-market accuracy claim is made.
+### Ethical use, representation and practical impact
+The public source contains vehicle attributes and advertised prices. No seller names,
+phone numbers or contact details are used as predictors. Public availability alone
+does not establish consent for every downstream use; source attribution and licence
+information are retained, and linking records to individuals is outside scope.
+
+The source represents online advertisers from two platforms over a short period,
+not the entire Sri Lankan vehicle market. Rare brands, unseen vehicle labels and
+high-price vehicles can have different error rates. Brand, town and equipment may
+reflect socioeconomic or geographic differences. Price-band, brand and category-
+coverage breakdowns expose some disparities but do not constitute a protected-group
+fairness audit: demographic attributes and verified identities are unavailable.
+
+Underestimation may disadvantage sellers; overestimation may mislead buyers or
+support inflated asking prices. The interface is an exploratory decision aid,
+not a basis for lending, insurance or automated eligibility decisions. Human
+inspection, current comparable listings and verified condition remain necessary.
+No model or explanation establishes causality. NGBoost uncertainty depends on the
+chosen distribution and can be poorly calibrated; displaying precision alone
+must not imply reliability. Future evaluation should include later data, wider
+regional and vehicle coverage, consent-aware collection and subgroup monitoring.
+
 No deep learning, computer vision or reinforcement learning is used.
 
 ## 12. Conclusion
 The study demonstrates an end-to-end workflow for historical vehicle listing-price
 regression, from data preparation and temporal evaluation to a deployed inference
 interface. Random Forest is the preferred model under the predefined validation-MAE
-criterion. XGBoost achieves a slightly lower test RMSE, while stacking does not
+criterion. NGBoost is the focal methodological contribution, evaluated honestly
+against existing benchmarks rather than assumed to be superior. XGBoost achieves a slightly lower test RMSE, while stacking does not
 improve validation MAE over Random Forest. The expanded comparison therefore
 supports evidence-based selection rather than assuming that additional model
 complexity produces better predictions.
@@ -316,6 +403,9 @@ and source measurements, is the principal next step before broader practical use
 3. Ke, G. et al. (2017). [LightGBM: A Highly Efficient Gradient Boosting Decision Tree](https://papers.nips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html). NeurIPS.
 4. [CatBoost categorical-feature documentation](https://catboost.ai/docs/en/features/categorical-features). Supports using native categorical input rather than external one-hot encoding.
 5. [LightGBM parameter-tuning documentation](https://lightgbm.readthedocs.io/en/v4.5.0/Parameters-Tuning.html). Supports constraining leaves and minimum observations to control complexity.
+
+6. Duan, T. et al. (2020). [NGBoost: Natural Gradient Boosting for Probabilistic Prediction](https://proceedings.mlr.press/v119/duan20a.html). ICML, PMLR 119:2690–2700.
+7. [NGBoost usage documentation](https://stanfordmlgroup.github.io/ngboost/useage/). Distributional regression, scoring rules and prediction APIs.
 
 ## Appendix A. Model-specific strengths, limitations and results
 ### Overview
@@ -423,6 +513,26 @@ Additional model candidates and stacking are exploratory additions after the tes
 **Large-error interpretation.** RMSE (15.28) is much larger than MAE (7.59), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
 
 ![LightGBM diagnostic graphs](figures/diagnostics_lightgbm.png)
+
+### NGBoost: strengths and limitations
+
+**Strengths.** Learns both location and scale of a price distribution using natural gradients. Provides a nonlinear probabilistic comparison to point-prediction models.
+
+**Limitations.** Normal-distribution assumptions may poorly describe skewed prices and outliers. Uncertainty can be miscalibrated; negative estimates and interval bounds are possible.
+
+**Measured results.** Validation MAE: **9.43 lakhs**; test MAE: **8.58 lakhs**; test RMSE: **16.45 lakhs**; test R²: **0.861**. Training MAE was **8.20 lakhs**. Lower MAE/RMSE is better; higher R² is better. R² is unitless, not percentage accuracy.
+
+**Feature-importance chart.** The strongest fields are **year, brand, engine cc, gear**, in that order. Longer bars mean shuffling that feature increased test error more. This is overall model reliance, not proof of causation, the direction of an effect, or an explanation for a single car. Correlated fields can share importance, and shuffling can produce unrealistic combinations.
+
+**Actual-versus-predicted graph.** Points on the dashed diagonal are correct predictions. Points below it are underestimates; points above it are overestimates. Each point represents one unseen test listing.
+
+**Residual graph.** Residual = actual price − predicted price. Positive values mean underestimation; negative values mean overestimation. A tight cloud around zero is desirable. The mean signed residual is **-0.19 lakhs**; the largest absolute test error is **313.17 lakhs**. These describe the whole test set, not a guaranteed range for the current vehicle.
+
+**What the graphs show here.** Most listings form a dense cluster at the lower end of the price range, broadly following the diagonal. The diagnostics show the direction and size of errors for this model. Points far from the diagonal or zero line identify large errors; no model is guaranteed reliable across all vehicles. The plots alone do not establish why those listings were difficult.
+
+**Large-error interpretation.** RMSE (16.45) is much larger than MAE (8.58), consistent with some large errors having a strong effect on the squared-error metric. Inspect isolated points far from the diagonal/zero line; an average score can hide these failures.
+
+![NGBoost diagnostic graphs](figures/diagnostics_ngboost.png)
 
 ### Ridge: strengths and limitations
 

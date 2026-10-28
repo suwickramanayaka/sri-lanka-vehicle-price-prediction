@@ -1,7 +1,7 @@
 # Sri Lankan Vehicle Listing Price Explorer
 
 An end-to-end regression application for historical Sri Lankan vehicle listing prices.
-Compares Random Forest, XGBoost, CatBoost, LightGBM, Ridge and temporal stacking. Includes temporal validation,
+Compares Random Forest, XGBoost, CatBoost, LightGBM, NGBoost, Ridge and temporal stacking. Includes temporal validation,
 model export, an unseen example, an analysis notebook and a Streamlit interface.
 
 ## Live application
@@ -14,13 +14,14 @@ that has been granted access. Repository access and app access are managed separ
 ## Presentation and report
 
 - [Project presentation (PowerPoint)](deliverables/vehicle-price-prediction-final.pptx)
-- [Final technical report (PDF)](deliverables/vehicle-price-prediction-report.pdf)
+- [Demo walkthrough (MP4, 4 min 49 sec)](deliverables/vehicle-price-prediction-demo.mp4) — narrated application screenshots covering prediction, explanations and data exploration.
+- [Final technical report (PDF)](deliverables/vehicle-price-prediction-ngboost-report.pdf)
 - [Report source (Markdown)](reports/final_report.md)
 
 ## Interface preview
 
 Focused screenshots show the current application. Click an image to open it at
-full size. All six trained models are available in the application.
+full size. The application offers seven models. The comparison and NGBoost screenshots show the latest extension; the original overview and fit-chart captures illustrate the earlier six-model interface.
 
 ### Price estimation
 
@@ -43,11 +44,11 @@ and test MAE; XGBoost has the lowest test RMSE and highest test R².
 
 **Average prediction error - lower is better**
 
-[![Validation and test MAE for all six models](docs/screenshots/model-comparison-mae.jpg)](docs/screenshots/model-comparison-mae.jpg)
+[![Validation and test MAE for all seven models](docs/screenshots/model-comparison-mae.jpg)](docs/screenshots/model-comparison-mae.jpg)
 
 **Large errors and model fit**
 
-[![Test RMSE and R-squared for all six models](docs/screenshots/model-comparison-fit.jpg)](docs/screenshots/model-comparison-fit.jpg)
+[![Test RMSE and R-squared for the original six models](docs/screenshots/model-comparison-fit.jpg)](docs/screenshots/model-comparison-fit.jpg)
 
 The scores are also provided as text for easy reading on smaller screens.
 
@@ -58,6 +59,7 @@ The scores are also provided as text for easy reading on smaller screens.
 | XGBoost | 7.562 | 6.821 | 14.241 | 0.896 |
 | CatBoost | 8.740 | 8.414 | 15.606 | 0.875 |
 | LightGBM | 9.410 | 7.590 | 15.283 | 0.880 |
+| NGBoost | 9.435 | 8.581 | 16.446 | 0.861 |
 | Ridge | 11.124 | 9.994 | 20.694 | 0.781 |
 
 MAE and RMSE are in lakhs; R² is unitless. Selection uses validation MAE.
@@ -94,6 +96,7 @@ python scripts/analyze_data.py
 python -m src.train
 python scripts/summarize_results.py
 python scripts/interpret_results.py
+python scripts/explain_ngboost.py
 python scripts/build_report.py
 python -m src.predict
 python -m pytest -q
@@ -158,8 +161,24 @@ without choosing the winner from test performance. Do not retune on these scores
 | `tests/` | Pipeline, isolation and inference checks |
 | `deliverables/` | Presentation and supporting materials |
 
+## NGBoost study
+
+[![NGBoost estimate in the application](docs/screenshots/ngboost-estimate.jpg)](docs/screenshots/ngboost-estimate.jpg)
+
+[![NGBoost partial-dependence explanations](docs/screenshots/ngboost-explanation.jpg)](docs/screenshots/ngboost-explanation.jpg)
+
+NGBoost extends the comparison with natural-gradient probabilistic regression.
+It is the focal new-method study; the default prediction model is still selected
+by validation MAE. The existing six models remain benchmarks.
+
+The fixed search compares 100, 200 and 300 boosting rounds with a Normal
+distribution, log-score objective and depth-3 trees. The application provides
+permutation importance and an optional partial-dependence explanation. Distribution
+coverage and width are reported as diagnostics, not guaranteed price ranges.
+See [methodology and measured findings](reports/interpretations/ngboost_study.md).
+
 ## Model switching
-All six fitted estimators are saved separately and registered in `models/metadata.json`.
+All seven fitted estimators are saved separately and registered in `models/metadata.json`.
 Use the **Prediction model** dropdown, then click **Estimate listing price**.
 The default is selected by validation MAE. Switching clears the previous
 estimate and updates the selected model’s test MAE. Downloaded results include the
@@ -214,3 +233,14 @@ validation fold scores and error breakdowns without crowding the prediction form
 
 The expanded comparison reuses an already examined test set, so it is exploratory.
 It does not establish current-market accuracy or superiority over published studies.
+
+### Export the technical report
+
+Install the optional report dependencies and render the current Markdown report:
+
+```bash
+pip install -r requirements-report.txt
+python scripts/export_report_pdf.py
+```
+
+The revised PDF is saved separately from the earlier manually edited report. The presentation and its local speaker script are preserved.

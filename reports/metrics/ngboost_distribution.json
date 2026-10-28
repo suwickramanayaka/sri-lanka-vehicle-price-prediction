@@ -1,0 +1,10 @@
+{
+  "distribution": "Normal",
+  "nominal_coverage": 0.9,
+  "test_nll": 3.7414703177174373,
+  "empirical_coverage": 0.8993370979621901,
+  "mean_interval_width_lakhs": 33.613675503779824,
+  "negative_lower_bound_fraction": 0.024060888779769214,
+  "test_rows": 4073,
+  "interval_status": "uncalibrated; previously examined historical test split"
+}

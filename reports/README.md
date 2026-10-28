@@ -1,14 +1,14 @@
 # Reports and evaluation evidence
 
-[Read the full technical report](final_report.md) or [open the PDF](../deliverables/vehicle-price-prediction-report.pdf).
+[Read the full technical report](final_report.md) or [open the PDF](../deliverables/vehicle-price-prediction-ngboost-report.pdf).
 
 | Folder | Contents |
 |---|---|
 | `data/` | Data audit, training summaries and exploratory profiles |
-| `metrics/` | Model comparison, parameter searches, validation folds and baseline |
+| `metrics/` | Model comparison, parameter searches, validation folds, baseline and NGBoost distribution checks |
 | `errors/` | Error breakdowns by brand, price band and category coverage |
 | `predictions/` | Held-out predictions and per-model residuals |
-| `importance/` | Permutation importance for each model and the selected model |
+| `importance/` | Permutation importance for each model and NGBoost partial dependence |
 | `interpretations/` | Model selection rationale and written model analyses |
 | `figures/` | Exploratory charts and diagnostic figures |
 

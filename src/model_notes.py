@@ -15,6 +15,9 @@ MODEL_NOTES = {
     'Ridge': (
         ['Regularized linear reference for measuring the benefit of tree models.', 'Simple additive structure and relatively inexpensive inference.'],
         ['Does not automatically learn nonlinear interactions.', 'Extrapolation can produce unrealistic or negative prices.']),
+    'NGBoost': (
+        ['Learns both location and scale of a price distribution using natural gradients.', 'Provides a nonlinear probabilistic comparison to point-prediction models.'],
+        ['Normal-distribution assumptions may poorly describe skewed prices and outliers.', 'Uncertainty can be miscalibrated; negative estimates and interval bounds are possible.']),
     'Stacking': (
         ['Combines Random Forest and XGBoost predictions using Ridge.', 'Meta-model learns from later out-of-fold predictions.'],
         ['Similar base-model errors can limit improvement.', 'More training work; early rows are excluded from meta-training.']),
