@@ -10,10 +10,10 @@ __pycache__/
 !.env.example
 .presentation-build/
 
-# Keep supporting materials local; publish the final presentation and report.
+# Keep working files and personal recording materials local.
+.video-build/
+submission/
 /deliverables/*
 !/deliverables/vehicle-price-prediction-final.pptx
-!/deliverables/vehicle-price-prediction-report.pdf
-
-!/deliverables/vehicle-price-prediction-ngboost-report.pdf
-!/deliverables/vehicle-price-prediction-demo.mp4
+!/deliverables/vehicle-price-prediction-report-final.pdf
+!/deliverables/vehicle-price-prediction-live-demo.mp4

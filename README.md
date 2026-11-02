@@ -11,12 +11,16 @@ model export, an unseen example, an analysis notebook and a Streamlit interface.
 Hosted on Streamlit Community Cloud. The app is private: sign in with an account
 that has been granted access. Repository access and app access are managed separately.
 
-## Presentation and report
+## Presentation, report and demonstration
 
 - [Project presentation (PowerPoint)](deliverables/vehicle-price-prediction-final.pptx)
-- [Demo walkthrough (MP4, 4 min 56 sec)](deliverables/vehicle-price-prediction-demo.mp4) — application screenshots with Rishi narration covering prediction, explanations and data exploration.
-- [Final technical report (PDF)](deliverables/vehicle-price-prediction-ngboost-report.pdf)
-- [Report source (Markdown)](reports/final_report.md)
+- [Live application demonstration (MP4, 5 min 47 sec)](deliverables/vehicle-price-prediction-live-demo.mp4) — a recorded walkthrough with the presenter's narration, covering predictions, model comparison, explanations and dataset exploration.
+- [Final technical report (PDF)](deliverables/vehicle-price-prediction-report-final.pdf)
+- [Supporting technical analysis (Markdown)](reports/final_report.md)
+- [Source repository](https://github.com/suwickramanayaka/sri-lanka-vehicle-price-prediction)
+
+The PDF is the final report. The Markdown analysis and generated evaluation files
+provide supporting evidence and reproducibility details.
 
 ## Interface preview
 
@@ -159,7 +163,7 @@ without choosing the winner from test performance. Do not retune on these scores
 | `docs/` | Experiment design, interface documentation and references |
 | `scripts/` | Exploration, results summaries and report generation |
 | `tests/` | Pipeline, isolation and inference checks |
-| `deliverables/` | Presentation and supporting materials |
+| `deliverables/` | Final report, presentation and live demonstration |
 
 ## NGBoost study
 
@@ -221,7 +225,8 @@ The comparison table, feature importance and diagnostic charts include it.
 ## Documentation
 
 - [Experiment plan](docs/experiment_plan.md): training-only findings, candidate rationale and fixed evaluation rules.
-- [Final report](reports/final_report.md): analysis, comparison, model-choice justification, sources and limitations.
+- [Final report](deliverables/vehicle-price-prediction-report-final.pdf): methodology, results, interpretation and discussion.
+- [Supporting analysis](reports/final_report.md): generated technical analysis and evaluation evidence.
 - [Executed notebook](notebooks/vehicle_price_analysis.ipynb): reproducible exploration, results and inference.
 - [Related approaches](docs/related_work.md): local vehicle-price study and primary CatBoost/LightGBM sources.
 

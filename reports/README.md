@@ -1,6 +1,6 @@
 # Reports and evaluation evidence
 
-[Read the full technical report](final_report.md) or [open the PDF](../deliverables/vehicle-price-prediction-ngboost-report.pdf).
+[Open the final report (PDF)](../deliverables/vehicle-price-prediction-report-final.pdf) or [read the supporting technical analysis](final_report.md).
 
 | Folder | Contents |
 |---|---|
